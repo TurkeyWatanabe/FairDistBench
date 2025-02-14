@@ -1,0 +1,5 @@
+datasets/*
+
+# 但保留 .py 文件和 .gitkeep 文件
+!datasets/**/*.py
+!datasets/**/*.gitkeep
