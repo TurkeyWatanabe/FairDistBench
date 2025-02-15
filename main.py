@@ -4,7 +4,7 @@ import logging
 from tabulate import tabulate
 from sklearn.ensemble import RandomForestClassifier
 from evaluation.tasks.fairness_learning import FairnessBenchmark
-from utils import load_dataset
+from utils import prepare_dataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,8 +19,11 @@ def main():
     
     if args.task == "fair":
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
+        parser.add_argument("--domain", type=str, default='', help="Attributie for domain division")
     elif args.task == "dg":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
+        parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
+
     
     args = parser.parse_args()
 
@@ -39,7 +42,7 @@ def main():
     
     # Load data and run the benchmark
     if args.task == "fair":
-        dataset = load_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive)
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive)
 
         # benchmark = FairnessBenchmark(dataset, args.label, args.sensitive, model)
         benchmark = FairnessBenchmark()
