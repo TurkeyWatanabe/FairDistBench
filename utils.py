@@ -18,18 +18,11 @@ def prepare_dataset(file_path, task, label='', sensitive='', domain=''):
     else:
         logging.info(f"Loading data from {file_path}...")
         dataset = load_data(file_path, task, path, label, sensitive, domain)
-        # with open(save_path, 'wb') as f:
-        #     pickle.dump(raw_dataset, f)
+        with open(save_path, 'wb') as f:
+            pickle.dump(dataset, f)
 
     logging.info(f"Finish data load from {file_path}!")
     # print(raw_dataset.data[0:5])
-    print(dataset.labels[0:10])
-    print(dataset.sensitive_attribute[0:10])
-    print(dataset.domain[0:10])
-    print(dataset.devided_dataset)
-    print(dataset.train_dataset)
-    print(dataset.test_dataset)
-    exit(0)
 
 
     return dataset

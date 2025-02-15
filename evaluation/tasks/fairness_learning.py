@@ -22,9 +22,9 @@ class FairnessBenchmark:
         # self._prepare_data()
     
     
-    # def train_model(self):
-    #     """Trains the model"""
-    #     self.model.fit(self.X_train, self.y_train)
+    def train_model(self):
+        """Trains the model"""
+        self.model.fit(self.X_train, self.y_train)
     
     # def evaluate(self):
     #     """Computes metrics"""
