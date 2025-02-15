@@ -29,7 +29,7 @@ def main():
     if args.task == "fair":
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
         parser.add_argument("--domain", type=str, default='', help="Attributie for domain division")
-        parser.add_argument("--model", type=str, required=True, help="['lfr','']")
+        parser.add_argument("--model", type=str, required=True, choices=["lfr", "gsr"])
     elif args.task == "dg":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
@@ -57,7 +57,7 @@ def main():
             
             # metric_transf_test = BinaryLabelFairnessMetric(dataset_transf_test)
             # print("Difference in mean outcomes between unprivileged and privileged groups = %f" % metric_transf_test.mean_difference())
-        elif args.model == 'grid_search_reduction':
+        elif args.model == 'gsr':
             estimator = LogisticRegression(solver='liblinear', random_state=1234)
             model = GridSearchReduction(estimator=estimator, 
                                     #   constraints="EqualizedOdds",
