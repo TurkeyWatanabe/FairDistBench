@@ -1,3 +1,6 @@
 datasets/*
 !datasets/**/*.py
 !datasets/**/.gitkeep
+
+*.log
+output/*

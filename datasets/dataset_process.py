@@ -102,7 +102,6 @@ def load_data(dataset, task, path, label, sensitive, domain):
         # Load the image
         img = Image.open(image_path)
         img_array = np.array(img)
-        print(img_array.shape)
         
         images.append(img_array)
         if label == 'age':

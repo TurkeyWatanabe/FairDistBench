@@ -1,6 +1,8 @@
 import argparse
 import pandas as pd
 import logging
+import os
+from datetime import datetime
 from tabulate import tabulate
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
@@ -9,15 +11,31 @@ from sklearn.linear_model import LogisticRegression
 from utils import prepare_dataset
 from evaluation.tasks.fairness_learning import FairnessBenchmark
 from algorithms.fairness_learning.lfr import LFR
-from algorithms.fairness_learning.grid_search_reduction import GridSearchReduction
+from algorithms.fairness_learning.gsr import GridSearchReduction
+from algorithms.fairness_learning.ad import AdversarialDebiasing
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
+
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-logging.basicConfig(level=logging.INFO)
+current_directory = os.getcwd()
+log_file_path = os.path.join(current_directory, "logfile.log")
+
+
+logging.basicConfig(
+    filename=log_file_path,
+    filemode='a',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
 
 def main():
+    print(f"日志文件路径: {log_file_path}")  # 添加此行
     parser = argparse.ArgumentParser(description="Benchmark Evaluation")
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "ood", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection), fairdg (fariness-aware domain generalization)")
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
@@ -29,18 +47,26 @@ def main():
     if args.task == "fair":
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
         parser.add_argument("--domain", type=str, default='', help="Attributie for domain division")
-        parser.add_argument("--model", type=str, required=True, choices=["lfr", "gsr"])
+        parser.add_argument("--model", type=str, required=True, choices=["lfr", "gsr","ad"])
     elif args.task == "dg":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
-
     
+
     args = parser.parse_args()
+    output_file_path = os.path.join(current_directory, f"output/output_{args.task}_{args.dataset}_{args.model}_{args.label}_{args.sensitive}_{args.domain}.txt")
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
     # logging
+    now = datetime.now()
+    logging.info(now.strftime("%Y-%m-%d %H:%M:%S"))
     logging.info("Running with the following configuration:")
     args_table = [[arg, value] for arg, value in vars(args).items()]
     logging.info("\n" + tabulate(args_table, headers=["Argument", "Value"], tablefmt="grid"))
+    with open(output_file_path, "a") as file:
+        file.write(now.strftime("%Y-%m-%d %H:%M:%S"))
+        file.write("\nRunning with the following configuration:")
+        file.write("\n" + tabulate(args_table, headers=["Argument", "Value"], tablefmt="grid"))
     
     # Load data and run the benchmark
     if args.task == "fair":
@@ -67,6 +93,19 @@ def main():
             dataset_transf_test = model.predict(dataset.test_dataset[0])
 
             metrics = BinaryLabelFairnessMetric(dataset.test_dataset[0].labels, dataset_transf_test.labels, dataset.test_dataset[0].sensitive_attribute)
+        
+        elif args.model == 'ad':
+            sess = tf.Session()
+            model = AdversarialDebiasing(
+                          scope_name='plain_classifier',
+                          debias=False,
+                          sess=sess)
+            model.fit(dataset.test_dataset[0])
+
+            dataset_transf_test = model.predict(dataset.test_dataset[0])
+
+            metrics = BinaryLabelFairnessMetric(dataset.test_dataset[0].labels, dataset_transf_test.labels, dataset.test_dataset[0].sensitive_attribute)
+
         else:
             raise ValueError("Unsupported model type")
 
@@ -77,9 +116,17 @@ def main():
         logging.info("Domain Generalization task is not yet implemented.")
         return
     
+    
     logging.info("Final Evaluation Results:")
     results = [['Accuracy',metrics.accuracy()], ['Difference_DP',metrics.difference_DP()], ['Difference_EO',metrics.difference_EO()]]
     logging.info("\n" + tabulate(results, headers=["Metric", "Result"], tablefmt="grid"))
+    with open(output_file_path, "a") as file:
+        file.write("\nFinal Evaluation Results:")
+        file.write("\n" + tabulate(results, headers=["Metric", "Result"], tablefmt="grid"))
+        file.write("\n\n")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        logging.shutdown()
