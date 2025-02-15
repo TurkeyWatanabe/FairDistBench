@@ -5,10 +5,12 @@ import scipy.optimize as optim
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+import copy
 from scipy.spatial.distance import cdist
 from scipy.special import softmax
-from torch.utils.data import DataLoader, TensorDataset
+
 
 
 class LFR:
@@ -172,7 +174,7 @@ class LFR:
         print(features_hat_privileged.shape)
 
         transformed_features = np.zeros(shape=(len(dataset.labels),2048))
-        transformed_labels = np.zeros(shape=np.shape(dataset.labels))
+        transformed_labels = np.zeros(shape=(len(dataset.labels),1))
         transformed_features[unprivileged_sample_ids] = features_hat_unprivileged
         transformed_features[privileged_sample_ids] = features_hat_privileged
         transformed_labels[unprivileged_sample_ids] = np.reshape(labels_hat_unprivileged, [-1, 1])
@@ -180,7 +182,7 @@ class LFR:
         transformed_bin_labels = (np.array(transformed_labels) > threshold).astype(np.float64)
 
         # Mutated, fairer dataset with new labels
-        dataset_new = dataset.copy(deepcopy=True)
+        dataset_new = copy.deepcopy(dataset)
         dataset_new.features = transformed_features
         dataset_new.labels = transformed_bin_labels
         # dataset_new.scores = np.array(transformed_labels)

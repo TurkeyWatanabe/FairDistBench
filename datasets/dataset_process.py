@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 import numpy as np
 from PIL import Image
 from sklearn.model_selection import train_test_split
@@ -90,14 +91,18 @@ def load_data(dataset, task, path, label, sensitive, domain):
     cnt = 0
     for item in annotations:
         image_id = item['id']
+        if type(image_id) == str:
+            image_id = ''.join(re.findall(r'\d', image_id))
+            image_id = int(image_id)
 
         # Construct the image filename, ensuring it has leading zeros (e.g., 000001.jpg)
-        image_filename = f"{image_id:06d}.jpg" # Format id as a 5-digit number (e.g., 000001.jpg)
+        image_filename = f"{image_id:06d}.jpg" # Format id as a 6-digit number (e.g., 000001.jpg)
         image_path = os.path.join(resized_dir, image_filename)
         
         # Load the image
         img = Image.open(image_path)
         img_array = np.array(img)
+        print(img_array.shape)
         
         images.append(img_array)
         if label == 'age':
@@ -186,15 +191,13 @@ def get_gender(dataset, item):
         
         if gender == 'Male': return 0
         elif gender == "Female": return 1
-    elif dataset == 'utkface':
+    elif dataset == 'utkface' or dataset =='utk-fairface':
         try:
             gender = item['gender']
         except KeyError:
             raise KeyError(f"Missing 'age' key for id {item['id']}")
 
         return gender
-    elif dataset =='utk-fairface':
-        pass
 
 
 def get_age(task, dataset, item):
