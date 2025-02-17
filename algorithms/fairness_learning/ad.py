@@ -6,9 +6,9 @@ from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_is_fitted
 import copy
 import torch
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.applications.resnet50 import preprocess_input
-from tensorflow.keras.models import Model
+import torchvision.models as models
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, TensorDataset
 try:
     import tensorflow.compat.v1 as tf
 except ImportError as error:
@@ -18,10 +18,6 @@ except ImportError as error:
 
 from aif360.sklearn.utils import check_inputs, check_groups
 
-def preprocess(image):
-    image = tf.image.permute_dimensions(image, (2, 0, 1))
-    image = preprocess_input(tf.cast(image, tf.float32))
-    return image
 
 class AdversarialDebiasing:
     """Adversarial debiasing is an in-processing technique that learns a
@@ -78,10 +74,10 @@ class AdversarialDebiasing:
         self.true_labels_ph = None
         self.pred_labels = None
 
-        self.device = "/GPU:0" if tf.config.list_physical_devices('GPU') else "/CPU:0"
-        base_model = ResNet50(weights="imagenet", include_top=False, pooling='avg')
-        base_model.trainable = False
-        self.resnet50 = Model(inputs=base_model.input, outputs=base_model.output)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.resnet50 = models.resnet50(pretrained=True).to(self.device)
+        self.resnet50 = torch.nn.Sequential(*list(self.resnet50.children())[:-1])
+        self.resnet50.eval()
 
     def _classifier_model(self, features, features_dim, keep_prob):
         """Compute the classifier predictions for the outcome variable.
@@ -196,17 +192,16 @@ class AdversarialDebiasing:
 
             data = dataset.data
             batch_size = 256
-            
-            dataset = tf.data.Dataset.from_tensor_slices(data)
-            dataset = dataset.map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
-            dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-
+            data = torch.tensor(data).permute(0, 3, 1, 2).float()
+            data = TensorDataset(data)
+            data = DataLoader(data, batch_size=batch_size, shuffle=False)
             features_list = []
-            with tf.device(self.device):
-                for batch in dataset:
-                    features = ResNet50(batch, training=False)
-                    features_list.append(features.numpy())
-            X = np.concatenate(features_list, axis=0)
+            with torch.no_grad():
+                for batch in data:
+                    batch = batch[0].to(self.device) 
+                    features = self.resnet50(batch) 
+                    features_list.append(features.squeeze().cpu()) 
+            X = torch.cat(features_list, dim=0).numpy()
 
             Y = dataset.labels
             A = dataset.sensitive_attribute
@@ -265,17 +260,16 @@ class AdversarialDebiasing:
 
         data = dataset.data
         batch_size = 256
-        
-        dataset = tf.data.Dataset.from_tensor_slices(data)
-        dataset = dataset.map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
-        dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-
+        data = torch.tensor(data).permute(0, 3, 1, 2).float()
+        data = TensorDataset(data)
+        data = DataLoader(data, batch_size=batch_size, shuffle=False)
         features_list = []
-        with tf.device(self.device):
-            for batch in dataset:
-                features = ResNet50(batch, training=False)
-                features_list.append(features.numpy())
-        X = np.concatenate(features_list, axis=0)
+        with torch.no_grad():
+            for batch in data:
+                batch = batch[0].to(self.device) 
+                features = self.resnet50(batch) 
+                features_list.append(features.squeeze().cpu()) 
+        X = torch.cat(features_list, dim=0).numpy()
 
         Y = dataset.labels
         A = dataset.sensitive_attribute
