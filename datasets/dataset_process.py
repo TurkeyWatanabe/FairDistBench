@@ -147,6 +147,15 @@ def load_data(dataset, task, path, label, sensitive, domain):
     sensitive_attributes = np.array(sensitive_attributes)
     domains = np.array(domains)
 
+    index = np.random.choice(len(labels), 20, replace=False).tolist()
+    images = images[index]
+    labels = labels[index]
+    if len(sensitive_attributes)!=0:
+        sensitive_attributes = sensitive_attributes[index]
+    if len(domains)!=0:
+        domains = domains[index]
+
+
     dataset = Dataset(data=images, labels=labels, sensitive_attribute=sensitive_attributes, domain=domains)
 
 

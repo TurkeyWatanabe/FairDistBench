@@ -35,7 +35,6 @@ logging.basicConfig(
 
 
 def main():
-    print(f"日志文件路径: {log_file_path}")  # 添加此行
     parser = argparse.ArgumentParser(description="Benchmark Evaluation")
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "ood", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection), fairdg (fariness-aware domain generalization)")
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
@@ -109,9 +108,7 @@ def main():
         else:
             raise ValueError("Unsupported model type")
 
-        # benchmark = FairnessBenchmark(dataset, args.label, args.sensitive, model)
-        # benchmark = FairnessBenchmark()
-        # results = benchmark.run()
+
     else:
         logging.info("Domain Generalization task is not yet implemented.")
         return
