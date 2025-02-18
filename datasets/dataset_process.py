@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 class Dataset:
     def __init__(self, data, labels, sensitive_attribute, domain):
         self.data = data  # The main data (e.g., features of the dataset)
+        self.shape = data[0].shape
         self.labels = labels  # The labels (e.g., target values for classification)
         self.sensitive_attribute = sensitive_attribute  # Sensitive attribute (e.g., gender, race)
         self.domain = domain  # Domain of the dataset (e.g., P, A, C, S)
