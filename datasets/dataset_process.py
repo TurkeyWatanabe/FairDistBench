@@ -7,7 +7,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 class Dataset:
-    def __init__(self, data, labels, sensitive_attribute, domain):
+    def __init__(self, data, labels, sensitive_attribute, domain, ood_labels=[]):
         self.data = data  # The main data (e.g., features of the dataset)
         self.shape = data[0].shape
         self.labels = labels  # The labels (e.g., target values for classification)
@@ -16,7 +16,8 @@ class Dataset:
 
         self.train_dataset = []
         self.test_dataset = []
-        
+
+        self.ood_labels = ood_labels
         self.domain_indices = []
         self.num_domains = 0
 
@@ -103,6 +104,42 @@ class Dataset:
 
                 self.train_dataset.append(train_dataset)
                 self.test_dataset.append(test_dataset)
+        elif task == 'oodd-s':
+            for i in range(self.num_domains):
+                ood_labels = np.zeros(len(self), dtype=np.int32)
+                train_indices = []
+                test_indices = []
+                for j in range(self.num_domains):
+                    if i == j:
+                        test_indices += self.domain_indices[j]
+                        ood_labels[self.domain_indices[j]] = 1
+                    else:
+                        if len(self.domain_indices[j]) > 1:
+                            id_train_indices, id_test_indices = train_test_split(self.domain_indices[j], test_size=test_size, random_state=random_state)
+                            train_indices += id_train_indices
+                            test_indices += id_test_indices
+                        else:
+                            train_indices += self.domain_indices[j]
+                        
+
+                train_dataset = Dataset(
+                    data=self.data[train_indices],
+                    labels=self.labels[train_indices],
+                    sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                )
+
+                test_dataset = Dataset(
+                    data=self.data[test_indices],
+                    labels=self.labels[test_indices],
+                    sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[test_indices] if len(self.domain) != 0 else [],
+                    ood_labels=ood_labels[test_indices]
+                )
+
+                self.train_dataset.append(train_dataset)
+                self.test_dataset.append(test_dataset)
+
             
 
     def __repr__(self):
@@ -175,7 +212,8 @@ def load_data(dataset, task, path, label, sensitive, domain):
              
 
         cnt += 1
-        if cnt % 10000 == 0 and cnt != 0:
+        if cnt % 20 == 0 and cnt != 0:
+            break
             logging.info(f"{cnt} images from {dataset} have been loaded")
 
     images = np.array(images)

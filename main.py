@@ -46,7 +46,7 @@ logging.basicConfig(
 
 def main():
     parser = argparse.ArgumentParser(description="Benchmark Evaluation")
-    parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "ood", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection), fairdg (fariness-aware domain generalization)")
+    parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "oodd-s", "oodd-a", "oodd-e", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection, oodd-s(sensory), oodd-a(intra-domain semantic), oodd-e(inter-domain semantic)), fairdg (fariness-aware domain generalization)")
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
@@ -64,6 +64,10 @@ def main():
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
         parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","mixup","mmd","mbdg"])
+    elif args.task == "oodd-s":
+        parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
+        parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
+        parser.add_argument("--model", type=str, required=True, choices=["svm", "ddu","msp","energy","entropy"])
     
 
     args = parser.parse_args()
@@ -163,6 +167,24 @@ def main():
         
         
         results = [['Accuracy',sum(accs) / len(accs)], ['F1-Score',sum(f1s) / len(f1s)]]
+
+    elif args.task =='oodd-s':
+        args.sensitive = ''
+        # data loader
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
+        accs = []
+        f1s = []
+        for i in range(dataset.num_domains):
+            logging.info(f"Leave domian {i} for testing...")
+            print(dataset.train_dataset[i].domain)
+            print(dataset.train_dataset[i].labels)
+
+            print(dataset.test_dataset[i].domain)
+            print(dataset.test_dataset[i].labels)
+            print(dataset.test_dataset[i].ood_labels)
+            print()
+
+        exit(0)
 
 
     
