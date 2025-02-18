@@ -49,8 +49,8 @@ def main():
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
-    parser.add_argument("--epoch", type=int, default=5, help="Epoch for training")
-    parser.add_argument("--n_steps", type=int, default=5, help="Steps in each epoch")
+    parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
+    parser.add_argument("--n_steps", type=int, default=1, help="Steps in each epoch")
     
     
     args, unknown = parser.parse_known_args()

@@ -169,7 +169,9 @@ class MMD(torch.nn.Module):
             for batch_data, batch_labels in test_loader:
                 batch_data, batch_labels = batch_data.to(self.device).permute(0, 3, 1, 2), batch_labels.to(self.device)
 
-                outputs = self.network(batch_data)
+                outputs = self.featurizer(batch_data).squeeze(-1).squeeze(-1)
+                outputs = self.classifier(outputs)
+
                 _, preds = torch.max(outputs, 1)
 
                 all_preds.extend(preds.cpu().numpy())
