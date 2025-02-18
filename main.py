@@ -19,6 +19,7 @@ from algorithms.domain_generalization.irm import IRM
 from algorithms.domain_generalization.gdro import GroupDRO
 from algorithms.domain_generalization.mixup import Mixup
 from algorithms.domain_generalization.mmd import MMD
+from algorithms.domain_generalization.mbdg import MBDG
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -100,7 +101,7 @@ def main():
             # metric_transf_test = BinaryLabelFairnessMetric(dataset_transf_test)
             # print("Difference in mean outcomes between unprivileged and privileged groups = %f" % metric_transf_test.mean_difference())
         elif args.model == 'gsr':
-            estimator = LogisticRegression(solver='liblinear', random_state=1234)
+            estimator = LogisticRegression(solver='liblinear')
             model = GridSearchReduction(estimator=estimator, 
                                     #   constraints="EqualizedOdds",
                                       constraints="DemographicParity",
@@ -146,6 +147,8 @@ def main():
                 model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             elif args.model == 'mmd':
                 model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            elif args.model == 'mbdg':
+                model = MBDG(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
