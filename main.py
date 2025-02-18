@@ -15,6 +15,7 @@ from algorithms.fairness_learning.lfr import LFR
 from algorithms.fairness_learning.gsr import GridSearchReduction
 from algorithms.fairness_learning.ad import AdversarialDebiasing
 from algorithms.domain_generalization.erm import ERM
+from algorithms.domain_generalization.irm import IRM
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -44,8 +45,9 @@ def main():
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "ood", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection), fairdg (fariness-aware domain generalization)")
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
-    parser.add_argument("--batch_size", type=int, default=256, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=5, help="Epoch for training")
+    parser.add_argument("--n_steps", type=int, default=2000, help="Steps in each epoch")
     
     
     args, unknown = parser.parse_known_args()
@@ -126,26 +128,27 @@ def main():
         args.sensitive = ''
         # data loader
         dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
-        batch_size = 256
-        epoch = 5
 
-        if args.model == 'erm':
-            accs = []
-            f1s = []
-            for i in range(dataset.num_domains):
-                print(f"Leave domian {i} for test...")
-                model = ERM(batch_size=batch_size, epoch=epoch)
-                model.fit(dataset.train_dataset[i])
+        accs = []
+        f1s = []
+        for i in range(dataset.num_domains):
+            print(f"Leave domian {i} for testing...")
+            if args.model == 'erm':
+                model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            elif args.model == 'irm':
+                model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            else:
+                raise ValueError(f"Unsupported model type for {args.task} task")
+            
+            model.fit(dataset.train_dataset[i])
 
-                preds, labels = model.predict(dataset.test_dataset[i])
+            preds, labels = model.predict(dataset.test_dataset[i])
 
-                metrics = DomainGeneralizationMetric(labels, preds)
-                
-                accs.append(metrics.accuracy())
-                f1s.append(metrics.f1())
-
-        else:
-            raise ValueError(f"Unsupported model type for {args.task} task")
+            metrics = DomainGeneralizationMetric(labels, preds)
+            
+            accs.append(metrics.accuracy())
+            f1s.append(metrics.f1())
+        
         
         results = [['Accuracy',sum(accs) / len(accs)], ['F1-Score',sum(f1s) / len(f1s)]]
 
