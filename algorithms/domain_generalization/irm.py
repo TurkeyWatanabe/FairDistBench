@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 import torch.autograd as autograd
 import numpy as np
+import logging
 from torch.utils.data import Dataset, DataLoader, RandomSampler
 
 
@@ -78,7 +79,7 @@ class IRM(torch.nn.Module):
         all_logits_idx = 0
         batch_len = len(labels)
         for i in range(batch_len):
-            x = data[i]
+            x = data[i].unsqueeze(0)
             y = labels[i].unsqueeze(0)
             logits = all_logits[all_logits_idx:all_logits_idx + 1]
             all_logits_idx += 1
@@ -125,7 +126,7 @@ class IRM(torch.nn.Module):
                 
                 total_loss += res['loss']
 
-            print(f"Epoch [{epoch+1}/{self.epoch}], Loss: {total_loss:.4f}")
+            logging.info(f"Epoch [{epoch+1}/{self.epoch}], Loss: {total_loss:.4f}")
 
                     
     def predict(self, dataset):

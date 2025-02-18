@@ -16,6 +16,7 @@ from algorithms.fairness_learning.gsr import GridSearchReduction
 from algorithms.fairness_learning.ad import AdversarialDebiasing
 from algorithms.domain_generalization.erm import ERM
 from algorithms.domain_generalization.irm import IRM
+from algorithms.domain_generalization.gdro import GroupDRO
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -47,7 +48,7 @@ def main():
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=5, help="Epoch for training")
-    parser.add_argument("--n_steps", type=int, default=2000, help="Steps in each epoch")
+    parser.add_argument("--n_steps", type=int, default=5, help="Steps in each epoch")
     
     
     args, unknown = parser.parse_known_args()
@@ -132,11 +133,13 @@ def main():
         accs = []
         f1s = []
         for i in range(dataset.num_domains):
-            print(f"Leave domian {i} for testing...")
+            logging.info(f"Leave domian {i} for testing...")
             if args.model == 'erm':
                 model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             elif args.model == 'irm':
                 model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            elif args.model == 'gdro':
+                model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             

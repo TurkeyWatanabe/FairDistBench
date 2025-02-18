@@ -23,11 +23,12 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
-class ERM(torch.nn.Module):
+class Mixup(torch.nn.Module):
     """Introduce
 
     References:
-        .. Vapnik V. The nature of statistical learning theory[M]. Springer science & business media, 2013.
+        .. Shen Yan, Huan Song, Nanxiang Li, Lincan Zou, and Liu Ren. 2020. Improve unsu-
+        pervised domain adaptation with mixup training. arXiv preprint arXiv:2001.00677 (2020).
     """
 
     def __init__(self, batch_size, epoch, n_steps, num_classes=2,lr=5e-5,weight_decay=0):

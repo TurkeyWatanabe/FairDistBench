@@ -23,19 +23,24 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
-class ERM(torch.nn.Module):
+class GroupDRO(torch.nn.Module):
     """Introduce
 
     References:
-        .. Vapnik V. The nature of statistical learning theory[M]. Springer science & business media, 2013.
+        .. Shiori Sagawa, Pang Wei Koh, Tatsunori B Hashimoto, and Percy Liang. 2019.
+        Distributionally robust neural networks for group shifts: On the importance
+        of regularization for worst-case generalization. arXiv preprint arXiv:1911.08731
+        (2019).
     """
 
-    def __init__(self, batch_size, epoch, n_steps, num_classes=2,lr=5e-5,weight_decay=0):
+    def __init__(self, batch_size, epoch, n_steps, groupdro_eta=1e-2, num_classes=2,lr=5e-5,weight_decay=0):
         super().__init__()
+        self.register_buffer("q", torch.Tensor())
 
         self.network = models.resnet50(pretrained=True)
         in_features = self.network.fc.in_features
         self.network.fc = nn.Linear(in_features, num_classes)
+        self.groupdro_eta = groupdro_eta
 
         self.optimizer = torch.optim.Adam(
             self.network.parameters(),
@@ -51,7 +56,23 @@ class ERM(torch.nn.Module):
 
 
     def update(self, data, labels):
-        loss = F.cross_entropy(self.network(data), labels)
+        batch_len = len(labels)
+
+        if not len(self.q):
+            self.q = torch.ones(batch_len).to(self.device)
+
+        losses = torch.zeros(batch_len).to(self.device)
+
+        for m in range(batch_len):
+            x, y = data[m].unsqueeze(0), labels[m].unsqueeze(0)
+
+        
+            losses[m] = F.cross_entropy(self.network(x), y)
+            self.q[m] *= (self.groupdro_eta * losses[m].data).exp()
+
+        self.q /= self.q.sum()
+
+        loss = torch.dot(losses, self.q)
 
         self.optimizer.zero_grad()
         loss.backward()
