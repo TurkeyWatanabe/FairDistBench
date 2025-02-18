@@ -15,28 +15,37 @@ class Dataset:
 
         self.train_dataset = []
         self.test_dataset = []
+        
+        self.domain_indices = []
+        self.num_domains = 0
 
     def __len__(self):
         return len(self.labels)
     
     def devide_by_domain(self):
-        datasets = []
-        if len(self.domain) != 0:
-            pass 
-        else:
-            datasets.append(Dataset(
-                data=self.data,
-                labels=self.labels,
-                sensitive_attribute=self.sensitive_attribute,
-                domain=self.domain
-            ))
+        """
+        Devide dataset by domain label
 
-        self.devided_dataset = datasets
+        return: a list of each domain's indices
+        """
+
+        if len(self.domain) != 0:
+            unique_domains = np.sort(np.unique(self.domain))
+            self.domain_indices = [np.where(self.domain == domain)[0].tolist() for domain in unique_domains]
+        else:
+            self.domain_indices = [np.arange(len(self))]
+
+        self.num_domains = len(self.domain_indices)
+
             
     
-    def split_dataset(self, test_size=0.2, random_state=42):
+    def split_dataset(self, task, test_size=0.2, random_state=42):
         """
-        Split the dataset into training and testing sets by domains.
+        Split the dataset into training and testing sets by domains depend on task.
+        -- fair: devide training and testing set depend on proportion
+        -- oodg: leave one domain out
+           example (ours): self.train_dataset = [A+C+S,P+C+S,P+A+S,P+A+C]
+                           self.test_dataset = [P,A,C,S]
 
         Args:
             dataset (Dataset): Dataset from one domain.
@@ -46,27 +55,53 @@ class Dataset:
         Returns:
             tuple: (train_dataset, test_dataset)
         """
-        # Split the indices for training and testing
-        for dataset in self.devided_dataset:
-            indices = np.arange(len(dataset))
+        if task == 'fair':
+            indices = self.domain_indices[0]
             train_indices, test_indices = train_test_split(indices, test_size=test_size, random_state=random_state)
 
             train_dataset = Dataset(
-                data=dataset.data[train_indices],
-                labels=dataset.labels[train_indices],
-                sensitive_attribute=dataset.sensitive_attribute[train_indices] if len(dataset.sensitive_attribute) != 0 else [],
-                domain=dataset.domain[train_indices] if len(dataset.domain) != 0 else []
+                data=self.data[train_indices],
+                labels=self.labels[train_indices],
+                sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
+                domain=self.domain[train_indices] if len(self.domain) != 0 else []
             )
 
             test_dataset = Dataset(
-                data=dataset.data[test_indices],
-                labels=dataset.labels[test_indices],
-                sensitive_attribute=dataset.sensitive_attribute[test_indices]if len(dataset.sensitive_attribute) != 0 else [],
-                domain=dataset.domain[test_indices] if len(dataset.domain) != 0 else []
+                data=self.data[test_indices],
+                labels=self.labels[test_indices],
+                sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
+                domain=self.domain[test_indices] if len(self.domain) != 0 else []
             )
             
             self.train_dataset.append(train_dataset)
             self.test_dataset.append(test_dataset)
+
+        elif task == 'oodg':
+            for i in range(self.num_domains):
+                train_indices = []
+                test_indices = []
+                for j in range(self.num_domains):
+                    if i == j:
+                        test_indices += self.domain_indices[j]
+                    else:
+                        train_indices += self.domain_indices[j]
+
+                train_dataset = Dataset(
+                    data=self.data[train_indices],
+                    labels=self.labels[train_indices],
+                    sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[train_indices] if len(self.domain) != 0 else []
+                )
+
+                test_dataset = Dataset(
+                    data=self.data[test_indices],
+                    labels=self.labels[test_indices],
+                    sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[test_indices] if len(self.domain) != 0 else []
+                )
+
+                self.train_dataset.append(train_dataset)
+                self.test_dataset.append(test_dataset)
             
 
     def __repr__(self):
@@ -147,13 +182,13 @@ def load_data(dataset, task, path, label, sensitive, domain):
     sensitive_attributes = np.array(sensitive_attributes)
     domains = np.array(domains)
 
-    index = np.random.choice(len(labels), 20000, replace=False).tolist()
-    images = images[index]
-    labels = labels[index]
-    if len(sensitive_attributes)!=0:
-        sensitive_attributes = sensitive_attributes[index]
-    if len(domains)!=0:
-        domains = domains[index]
+    # index = np.random.choice(len(labels), 20000, replace=False).tolist()
+    # images = images[index]
+    # labels = labels[index]
+    # if len(sensitive_attributes)!=0:
+    #     sensitive_attributes = sensitive_attributes[index]
+    # if len(domains)!=0:
+    #     domains = domains[index]
 
 
     dataset = Dataset(data=images, labels=labels, sensitive_attribute=sensitive_attributes, domain=domains)
@@ -163,7 +198,7 @@ def load_data(dataset, task, path, label, sensitive, domain):
     dataset.devide_by_domain()
 
     ### dataset split
-    dataset.split_dataset()
+    dataset.split_dataset(task)
 
 
     return dataset

@@ -45,11 +45,12 @@ def main():
     
     if args.task == "fair":
         parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
-        parser.add_argument("--domain", type=str, default='', help="Attributie for domain division")
+        parser.add_argument("--domain", type=str, default='', help="No need for fair task")
         parser.add_argument("--model", type=str, required=True, choices=["lfr", "gsr","ad"])
-    elif args.task == "dg":
+    elif args.task == "oodg":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
-        parser.add_argument("--sensitive", type=str, required=True, help="Name of the sensitive attribute column")
+        parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
+        parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","ddg","mbdg"])
     
 
     args = parser.parse_args()
@@ -67,9 +68,13 @@ def main():
         file.write("\nRunning with the following configuration:")
         file.write("\n" + tabulate(args_table, headers=["Argument", "Value"], tablefmt="grid"))
     
+    
+
     # Load data and run the benchmark
     if args.task == "fair":
-        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive)
+        args.domain = ''
+        # data loader
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
 
         # Configure model
         if args.model == "lfr":
@@ -106,16 +111,26 @@ def main():
             metrics = BinaryLabelFairnessMetric(dataset.test_dataset[0].labels, dataset_transf_test.labels, dataset.test_dataset[0].sensitive_attribute)
 
         else:
-            raise ValueError("Unsupported model type")
+            raise ValueError(f"Unsupported model type for {args.task} task")
+        
+        results = [['Accuracy',metrics.accuracy()], ['Difference_DP',metrics.difference_DP()], ['Difference_EO',metrics.difference_EO()]]
 
+    elif args.task == "oodg":
+        args.sensitive = ''
+        # data loader
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
 
-    else:
-        logging.info("Domain Generalization task is not yet implemented.")
-        return
+        if args.model == 'erm':
+            for i in range(dataset.num_domains):
+                pass
+                # print(len(dataset.train_dataset[i]))
+                # print(len(dataset.test_dataset[i]))
+        else:
+            raise ValueError(f"Unsupported model type for {args.task} task")
+
     
     
     logging.info("Final Evaluation Results:")
-    results = [['Accuracy',metrics.accuracy()], ['Difference_DP',metrics.difference_DP()], ['Difference_EO',metrics.difference_EO()]]
     logging.info("\n" + tabulate(results, headers=["Metric", "Result"], tablefmt="grid"))
     with open(output_file_path, "a") as file:
         file.write("\nFinal Evaluation Results:")
