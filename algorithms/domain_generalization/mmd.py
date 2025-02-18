@@ -23,21 +23,31 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
-class Mixup(torch.nn.Module):
+class MMD(torch.nn.Module):
     """Introduce
 
     References:
-        .. Shen Yan, Huan Song, Nanxiang Li, Lincan Zou, and Liu Ren. 2020. Improve unsu-
-        pervised domain adaptation with mixup training. arXiv preprint arXiv:2001.00677 (2020).
+        .. Haoliang Li, Sinno Jialin Pan, Shiqi Wang, and Alex C Kot. 2018. Domain gener-
+        alization with adversarial feature learning. In Proceedings of the IEEE conference
+        on computer vision and pattern recognition. 5400–5409.
     """
 
-    def __init__(self, batch_size, epoch, n_steps, mixup_alpha=0.2, num_classes=2,lr=5e-5,weight_decay=0):
+    def __init__(self, batch_size, epoch, n_steps, mmd_gamma=1., num_classes=2,lr=5e-5,weight_decay=0):
         super().__init__()
 
-        self.network = models.resnet50(pretrained=True)
-        in_features = self.network.fc.in_features
-        self.network.fc = nn.Linear(in_features, num_classes)
-        self.mixup_alpha = mixup_alpha
+        gaussian = True
+        if gaussian:
+            self.kernel_type = "gaussian"
+        else:
+            self.kernel_type = "mean_cov"
+
+        resnet = models.resnet50(pretrained=True)
+        self.featurizer = nn.Sequential(*list(resnet.children())[:-1])
+        in_features = resnet.fc.in_features
+        self.classifier = nn.Linear(in_features, num_classes)
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+
+        self.mmd_gamma = mmd_gamma
 
         self.optimizer = torch.optim.Adam(
             self.network.parameters(),
@@ -51,43 +61,71 @@ class Mixup(torch.nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.network.to(self.device) # (batch_size, channels, height, width) 
 
-    @staticmethod
-    def random_pairs_of_minibatches(data, labels):
-        batch_len = len(labels)
-        perm = torch.randperm(batch_len).tolist()
-        pairs = []
+    def my_cdist(self, x1, x2):
+        x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)
+        x2_norm = x2.pow(2).sum(dim=-1, keepdim=True)
+        res = torch.addmm(x2_norm.transpose(-2, -1),
+                          x1,
+                          x2.transpose(-2, -1), alpha=-2).add_(x1_norm)
+        return res.clamp_min_(1e-30)
 
-        for i in range(batch_len):
-            j = i + 1 if i < (batch_len - 1) else 0
+    def gaussian_kernel(self, x, y, gamma=[0.001, 0.01, 0.1, 1, 10, 100,
+                                           1000]):
+        D = self.my_cdist(x, y)
+        K = torch.zeros_like(D)
 
-            xi, yi = data[perm[i]].unsqueeze(0), labels[perm[i]].unsqueeze(0)
-            xj, yj = data[perm[j]].unsqueeze(0), labels[perm[j]].unsqueeze(0)
+        for g in gamma:
+            K.add_(torch.exp(D.mul(-g)))
 
-            min_n = min(len(xi), len(xj))
+        return K
 
-            pairs.append(((xi[:min_n], yi[:min_n]), (xj[:min_n], yj[:min_n])))
+    def mmd(self, x, y):
+        if self.kernel_type == "gaussian":
+            Kxx = self.gaussian_kernel(x, x).mean()
+            Kyy = self.gaussian_kernel(y, y).mean()
+            Kxy = self.gaussian_kernel(x, y).mean()
+            return Kxx + Kyy - 2 * Kxy
+        else:
+            mean_x = x.mean(0, keepdim=True)
+            mean_y = y.mean(0, keepdim=True)
+            cent_x = x - mean_x
+            cent_y = y - mean_y
+            cova_x = (cent_x.t() @ cent_x) / (len(x) - 1)
+            cova_y = (cent_y.t() @ cent_y) / (len(y) - 1)
 
-        return pairs
+            mean_diff = (mean_x - mean_y).pow(2).mean()
+            cova_diff = (cova_x - cova_y).pow(2).mean()
+
+            return mean_diff + cova_diff
+        
 
     def update(self, data, labels):
         objective = 0
+        penalty = 0
+        batch_len= len(labels)
+        nmb = batch_len
 
-        for (xi,yi), (xj,yj) in self.random_pairs_of_minibatches(data, labels):
-            lam = np.random.beta(self.mixup_alpha, self.mixup_alpha)
+        features = [self.featurizer(xi.unsqueeze(0)).squeeze(-1).squeeze(-1) for xi in data]
+        classifs = [self.classifier(fi) for fi in features]
+        targets = [yi.unsqueeze(0) for yi in labels]
 
-            x = lam * xi + (1 - lam) * xj
-            predictions = self.network(x)
+        for i in range(nmb):
+            objective += F.cross_entropy(classifs[i], targets[i])
+            for j in range(i + 1, nmb):
+                penalty += self.mmd(features[i], features[j])
 
-            objective += lam * F.cross_entropy(predictions, yi)
-            objective += (1 - lam) * F.cross_entropy(predictions, yj)
-
-        objective /= len(labels)
+        objective /= nmb
+        if nmb > 1:
+            penalty /= (nmb * (nmb - 1) / 2)
 
         self.optimizer.zero_grad()
-        objective.backward()
+        (objective + (self.mmd_gamma * penalty)).backward()
         self.optimizer.step()
 
-        return {'loss': objective.item()}
+        if torch.is_tensor(penalty):
+            penalty = penalty.item()
+
+        return {'loss': objective.item(), 'penalty': penalty}
     
     def fit(self, dataset):
         """

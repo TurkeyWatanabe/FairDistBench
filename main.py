@@ -17,6 +17,8 @@ from algorithms.fairness_learning.ad import AdversarialDebiasing
 from algorithms.domain_generalization.erm import ERM
 from algorithms.domain_generalization.irm import IRM
 from algorithms.domain_generalization.gdro import GroupDRO
+from algorithms.domain_generalization.mixup import Mixup
+from algorithms.domain_generalization.mmd import MMD
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -60,7 +62,7 @@ def main():
     elif args.task == "oodg":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
-        parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","ddg","mbdg"])
+        parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","mixup","mmd","mbdg"])
     
 
     args = parser.parse_args()
@@ -140,6 +142,10 @@ def main():
                 model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             elif args.model == 'gdro':
                 model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            elif args.model == 'mixup':
+                model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+            elif args.model == 'mmd':
+                model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
