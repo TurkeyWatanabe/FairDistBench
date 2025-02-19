@@ -35,7 +35,7 @@ class Dataset:
             unique_domains = np.sort(np.unique(self.domain))
             self.domain_indices = [np.where(self.domain == domain)[0].tolist() for domain in unique_domains]
         else:
-            self.domain_indices = [np.arange(len(self))]
+            self.domain_indices = [np.arange(len(self)).tolist()]
 
         self.num_domains = len(self.domain_indices)
 
@@ -105,17 +105,101 @@ class Dataset:
                 self.train_dataset.append(train_dataset)
                 self.test_dataset.append(test_dataset)
         elif task == 'oodd-s':
+            # In our ood detection settings, the triple category label age are divide into ID (young and middle) and OOD (elder)
+            class_elder_indices = np.where(self.labels == 2)[0]
             for i in range(self.num_domains):
                 ood_labels = np.zeros(len(self), dtype=np.int32)
                 train_indices = []
                 test_indices = []
+                
                 for j in range(self.num_domains):
                     if i == j:
-                        test_indices += self.domain_indices[j]
+                        # test domain as ood
+                        test_indices += self.domain_indices[j] # domain == i (test domain)
                         ood_labels[self.domain_indices[j]] = 1
                     else:
                         if len(self.domain_indices[j]) > 1:
-                            id_train_indices, id_test_indices = train_test_split(self.domain_indices[j], test_size=test_size, random_state=random_state)
+                            test_indices += np.intersect1d(self.domain_indices[j], class_elder_indices).tolist() # class == elder
+                            train_id_class_indices = np.setdiff1d(self.domain_indices[j], class_elder_indices).tolist() # domain==j & class!= elder
+
+                            id_train_indices, id_test_indices = train_test_split(train_id_class_indices, test_size=test_size, random_state=random_state)
+                            train_indices += id_train_indices
+                            test_indices += id_test_indices
+                        else:
+                            train_indices += self.domain_indices[j]
+                        
+                train_dataset = Dataset(
+                    data=self.data[train_indices],
+                    labels=self.labels[train_indices],
+                    sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                )
+
+                test_dataset = Dataset(
+                    data=self.data[test_indices],
+                    labels=self.labels[test_indices],
+                    sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
+                    domain=self.domain[test_indices] if len(self.domain) != 0 else [],
+                    ood_labels=ood_labels[test_indices]
+                )
+
+                self.train_dataset.append(train_dataset)
+                self.test_dataset.append(test_dataset)
+        elif task == 'oodd-a':
+            class_elder_indices = np.where(self.labels == 2)[0]
+            ood_labels = np.zeros(len(self), dtype=np.int32)
+            ood_labels[class_elder_indices] = 1
+
+            train_indices = []
+            test_indices = []
+            for i in range(self.num_domains):
+                if len(self.domain_indices[i]) > 1:
+                    test_indices += np.intersect1d(self.domain_indices[i], class_elder_indices).tolist() # class == elder
+                    train_id_class_indices = np.setdiff1d(self.domain_indices[i], class_elder_indices).tolist() # domain==j & class!= elder
+
+                    id_train_indices, id_test_indices = train_test_split(train_id_class_indices, test_size=test_size, random_state=random_state)
+                    train_indices += id_train_indices
+                    test_indices += id_test_indices
+                else:
+                    train_indices += self.domain_indices[i]
+                                
+
+            train_dataset = Dataset(
+                data=self.data[train_indices],
+                labels=self.labels[train_indices],
+                sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
+                domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+            )
+
+            test_dataset = Dataset(
+                data=self.data[test_indices],
+                labels=self.labels[test_indices],
+                sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
+                domain=self.domain[test_indices] if len(self.domain) != 0 else [],
+                ood_labels=ood_labels[test_indices]
+            )
+
+            self.train_dataset.append(train_dataset)
+            self.test_dataset.append(test_dataset)
+
+        elif task == 'oodd-e':
+            class_elder_indices = np.where(self.labels == 2)[0]
+            ood_labels = np.zeros(len(self), dtype=np.int32)
+            ood_labels[class_elder_indices] = 1
+            for i in range(self.num_domains):
+                train_indices = []
+                test_indices = []
+                
+                for j in range(self.num_domains):
+                    if i == j:
+                        # test domain as ood
+                        test_indices += self.domain_indices[j] # domain == i (test domain)
+                    else:
+                        if len(self.domain_indices[j]) > 1:
+                            test_indices += np.intersect1d(self.domain_indices[j], class_elder_indices).tolist() # class == elder
+                            train_id_class_indices = np.setdiff1d(self.domain_indices[j], class_elder_indices).tolist() # domain==j & class!= elder
+
+                            id_train_indices, id_test_indices = train_test_split(train_id_class_indices, test_size=test_size, random_state=random_state)
                             train_indices += id_train_indices
                             test_indices += id_test_indices
                         else:

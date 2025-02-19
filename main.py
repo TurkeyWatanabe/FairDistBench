@@ -64,7 +64,11 @@ def main():
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
         parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","mixup","mmd","mbdg"])
-    elif args.task == "oodd-s":
+    elif args.task == "oodd-s" or args.task == "oodd-a":
+        parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
+        parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
+        parser.add_argument("--model", type=str, required=True, choices=["svm", "ddu","msp","energy","entropy"])
+    elif args.task == "oodd-e":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
         parser.add_argument("--model", type=str, required=True, choices=["svm", "ddu","msp","energy","entropy"])
@@ -169,6 +173,38 @@ def main():
         results = [['Accuracy',sum(accs) / len(accs)], ['F1-Score',sum(f1s) / len(f1s)]]
 
     elif args.task =='oodd-s':
+        args.sensitive = ''
+        # data loader
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
+        accs = []
+        f1s = []
+        for i in range(dataset.num_domains):
+            logging.info(f"Leave domian {i} for testing...")
+            print(dataset.train_dataset[i].domain)
+            print(dataset.train_dataset[i].labels)
+
+            print(dataset.test_dataset[i].domain)
+            print(dataset.test_dataset[i].labels)
+            print(dataset.test_dataset[i].ood_labels)
+            print()
+
+        exit(0)
+    elif args.task =='oodd-a':
+        args.sensitive = ''
+        # data loader
+        dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
+        accs = []
+        f1s = []
+
+        print(dataset.train_dataset[0].domain)
+        print(dataset.train_dataset[0].labels)
+
+        print(dataset.test_dataset[0].domain)
+        print(dataset.test_dataset[0].labels)
+        print(dataset.test_dataset[0].ood_labels)
+        print()
+        exit(0)
+    elif args.task =='oodd-e':
         args.sensitive = ''
         # data loader
         dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
