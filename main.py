@@ -22,6 +22,7 @@ from algorithms.domain_generalization.mmd import MMD
 from algorithms.domain_generalization.mbdg import MBDG
 from algorithms.ood_detection.inter_domain_sensory.ocsvm import OCSVM
 from algorithms.ood_detection.inter_domain_sensory.energy import Energy
+from algorithms.ood_detection.inter_domain_sensory.msp import MSP
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -187,6 +188,8 @@ def main():
                 model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
             elif args.model == 'energy':
                 model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            elif args.model == 'msp':
+                model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
