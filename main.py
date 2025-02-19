@@ -215,17 +215,28 @@ def main():
         args.sensitive = ''
         # data loader
         dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
-        accs = []
-        f1s = []
+        
+        if args.model == 'oc-svm':
+            model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+        elif args.model == 'energy':
+            model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+        elif args.model == 'msp':
+            model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size)
+        elif args.model == 'ddu':
+            model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size)
+        elif args.model == 'entropy':
+            model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+        else:
+            raise ValueError(f"Unsupported model type for {args.task} task")
+        
+        model.fit(dataset.train_dataset[0])
 
-        print(dataset.train_dataset[0].domain)
-        print(dataset.train_dataset[0].labels)
+        preds, ood_labels, predicted_labels, id_class_labels, id_class_predicted_labels = model.predict(dataset.test_dataset[0])
 
-        print(dataset.test_dataset[0].domain)
-        print(dataset.test_dataset[0].labels)
-        print(dataset.test_dataset[0].ood_labels)
-        print()
-        exit(0)
+        metrics = OODDetectionMetrics(ood_labels, preds, predicted_labels, id_class_labels, id_class_predicted_labels)
+    
+        results = [['AUROC', metrics.auroc()], ['AUPR', metrics.aupr()], ['ID Accuracy',metrics.id_accuracy()]]
+
     elif args.task =='oodd-e':
         args.sensitive = ''
         # data loader
