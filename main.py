@@ -24,6 +24,7 @@ from algorithms.ood_detection.inter_domain_sensory.ocsvm import OCSVM
 from algorithms.ood_detection.inter_domain_sensory.energy import Energy
 from algorithms.ood_detection.inter_domain_sensory.msp import MSP
 from algorithms.ood_detection.inter_domain_sensory.ddu import DDU
+from algorithms.ood_detection.inter_domain_sensory.entropy import Entropy
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -55,7 +56,7 @@ def main():
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
-    parser.add_argument("--epoch", type=int, default=5, help="Epoch for training")
+    parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
     parser.add_argument("--n_steps", type=int, default=1000, help="Steps in each epoch")
     
     args, unknown = parser.parse_known_args()
@@ -193,6 +194,8 @@ def main():
                 model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size)
             elif args.model == 'ddu':
                 model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            elif args.model == 'entropy':
+                model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
