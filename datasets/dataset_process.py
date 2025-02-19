@@ -296,8 +296,7 @@ def load_data(dataset, task, path, label, sensitive, domain):
              
 
         cnt += 1
-        if cnt % 20 == 0 and cnt != 0:
-            break
+        if cnt % 10000 == 0 and cnt != 0:
             logging.info(f"{cnt} images from {dataset} have been loaded")
 
     images = np.array(images)
