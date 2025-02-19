@@ -21,6 +21,7 @@ from algorithms.domain_generalization.mixup import Mixup
 from algorithms.domain_generalization.mmd import MMD
 from algorithms.domain_generalization.mbdg import MBDG
 from algorithms.ood_detection.inter_domain_sensory.ocsvm import OCSVM
+from algorithms.ood_detection.inter_domain_sensory.energy import Energy
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -51,7 +52,9 @@ def main():
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "oodd-s", "oodd-a", "oodd-e", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection, oodd-s(sensory), oodd-a(intra-domain semantic), oodd-e(inter-domain semantic)), fairdg (fariness-aware domain generalization)")
     parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
-    
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
+    parser.add_argument("--epoch", type=int, default=5, help="Epoch for training")
+    parser.add_argument("--n_steps", type=int, default=1000, help="Steps in each epoch")
     
     args, unknown = parser.parse_known_args()
     
@@ -63,10 +66,6 @@ def main():
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
         parser.add_argument("--model", type=str, required=True, choices=["erm", "irm","gdro","mixup","mmd","mbdg"])
-
-        parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
-        parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
-        parser.add_argument("--n_steps", type=int, default=1000, help="Steps in each epoch")
     elif args.task == "oodd-s" or args.task == "oodd-a":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
@@ -185,16 +184,17 @@ def main():
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
             if args.model == 'oc-svm':
-              model = OCSVM()
-              
+                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            elif args.model == 'energy':
+                model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
             model.fit(dataset.train_dataset[i])
 
-            preds, labels = model.predict(dataset.test_dataset[i])
+            preds, ood_labels, predicted_labels, _, _ = model.predict(dataset.test_dataset[i])
 
-            metrics = OODDetectionMetrics(args.model, labels, preds)
+            metrics = OODDetectionMetrics(ood_labels, preds, predicted_labels)
             
             ood_id_accs.append(metrics.ood_id_accuracy())
             auroc.append(metrics.auroc())
