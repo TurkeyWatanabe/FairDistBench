@@ -4,36 +4,121 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
-class Energy:
-    def __init__(self, task, epochs = 5, batch_size = 64,num_class=2, threshold_percent=90):
+def to_np(x): return x.data.cpu().numpy()
+
+class SCONE:
+    def __init__(self, epochs = 5, batch_size = 64,num_classes=2, threshold_percent=90,
+                 false_alarm_cutoff=0.05, in_constraint_weight=1, ce_constraint_weight=1,
+                 ce_tol=2, penalty_mult=2.5, lr_lam=1):
         """
-        Initialize One-Class SVM for OOD detection.
-        :param nu: An upper bound on the fraction of margin errors and a lower bound of support vectors.
-        :param kernel: Specifies the kernel type to be used in the algorithm.
-        :param gamma: Kernel coefficient.
-        :epochs: Number of epoch for featurizer training
-        :batch_size: Size of batch for featurizer training
+        SCONE
         """
-        self.task = task
         self.epochs = epochs
         self.batch_size = batch_size
         self.threshold_percent = threshold_percent
+        self.false_alarm_cutoff = false_alarm_cutoff
+        self.in_constraint_weight = in_constraint_weight
+        self.ce_constraint_weight = ce_constraint_weight
+        self.ce_tol = ce_tol
+        self.penalty_mult = penalty_mult
+        self.lr_lam = lr_lam
+        self.num_classes = num_classes
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.resnet50 = models.resnet50(pretrained=True)
         in_features = self.resnet50.fc.in_features
-        self.resnet50.fc = nn.Linear(in_features, num_class)
+        self.resnet50.fc = nn.Linear(in_features, num_classes)
         self.resnet50 = self.resnet50.to(self.device)
+
+        self.logistic_regression = nn.Linear(1, 1)
+        self.logistic_regression = self.logistic_regression.to(self.device)
 
         self.resnet_trained = False   # Flag to check if ResNet classifier is trained
         self.feature_extractor = None # Model for feature extraction after training
         self.energy_threshold = None
+
     
     def compute_energy(self, logits, T=1.0):
         # Compute energy using the logits
         return -T * torch.logsumexp(logits / T, dim=1)
+    
+    def evaluate_classification_loss_training(self, data_loader):
+        '''
+        evaluate classification loss on training dataset
+        '''
+
+        self.resnet50.eval()
+        losses = []
+        for inputs, target in data_loader:
+            data, target = inputs.to(self.device), target.to(self.device)
+            # forward
+            x = self.resnet50(data)
+
+            # in-distribution classification accuracy
+            x_classification = x[:, :self.num_classes]
+            loss_ce = F.cross_entropy(x_classification, target, reduction='none')
+
+            losses.extend(list(to_np(loss_ce)))
+
+        avg_loss = np.mean(np.array(losses))
+        print("average loss fr classification {}".format(avg_loss))
+
+        return avg_loss
+    
+    def evaluate_energy_logistic_loss(self, train_loader):
+        '''
+        evaluate energy logistic loss on training dataset
+        '''
+
+        self.resnet50.eval()
+        self.logistic_regression.eval()
+        sigmoid_energy_losses = []
+        logistic_energy_losses = []
+        ce_losses = []
+        for inputs, target in train_loader:
+            data, target = inputs.to(self.device), target.to(self.device)
+
+            # forward
+            x = self.resnet50(data)
+
+            # compute energies
+            Ec_in = torch.logsumexp(x, dim=1)
+
+            # compute labels
+            binary_labels_1 = torch.ones(len(data)).to(self.device)
+
+            # compute in distribution logistic losses
+            logistic_loss_energy_in = F.binary_cross_entropy_with_logits(self.logistic_regression(
+                Ec_in.unsqueeze(1)).squeeze(), binary_labels_1, reduction='none')
+
+            logistic_energy_losses.extend(list(to_np(logistic_loss_energy_in)))
+
+            # compute in distribution sigmoid losses
+            sigmoid_loss_energy_in = torch.sigmoid(self.logistic_regression(
+                Ec_in.unsqueeze(1)).squeeze())
+
+            sigmoid_energy_losses.extend(list(to_np(sigmoid_loss_energy_in)))
+
+            # in-distribution classification losses
+            x_classification = x[:, :self.num_classes]
+            loss_ce = F.cross_entropy(x_classification, target, reduction='none')
+
+            ce_losses.extend(list(to_np(loss_ce)))
+
+        avg_sigmoid_energy_losses = np.mean(np.array(sigmoid_energy_losses))
+        print("average sigmoid in distribution energy loss {}".format(avg_sigmoid_energy_losses))
+
+        avg_logistic_energy_losses = np.mean(np.array(logistic_energy_losses))
+        print("average in distribution energy loss {}".format(avg_logistic_energy_losses))
+
+        avg_ce_loss = np.mean(np.array(ce_losses))
+        print("average loss fr classification {}".format(avg_ce_loss))
+
+        return avg_sigmoid_energy_losses, avg_logistic_energy_losses, avg_ce_loss
+
 
     def train_featurizer(self, dataset, epochs, batch_size, lr=1e-4):
         """
@@ -44,16 +129,22 @@ class Energy:
         :param batch_size: Batch size for training.
         :param lr: Learning rate for the optimizer.
         """
-
         data = torch.tensor(dataset.data).permute(0, 3, 1, 2).float()
         labels = torch.tensor(dataset.labels).long()
         train_ds = TensorDataset(data, labels)
         dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        lam = torch.tensor(0).float()
+        lam = lam.to(self.device)
+
+        lam2 = torch.tensor(0).float()
+        lam2 = lam.to(self.device)
         
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.resnet50.parameters(), lr=lr)
         
         self.resnet50.train()
+        self.logistic_regression.train()
+        full_train_loss = self.evaluate_classification_loss_training(dataloader)
         for epoch in range(epochs):
             running_loss = 0.0
             for inputs, target in dataloader:
@@ -63,31 +154,65 @@ class Energy:
                 loss_ce = criterion(outputs, target)
 
                 #apply the sigmoid loss
-                loss_energy_in =  torch.mean(torch.sigmoid(logistic_regression(
-                    (torch.logsumexp(x[:len(in_set[0])], dim=1)).unsqueeze(1)).squeeze()))
-                loss_energy_out = torch.mean(torch.sigmoid(-logistic_regression(
-                    (torch.logsumexp(x[len(in_set[0]):], dim=1) - args.eta).unsqueeze(1)).squeeze()))
+                loss_energy_in =  torch.mean(torch.sigmoid(self.logistic_regression(
+                    (torch.logsumexp(outputs, dim=1)).unsqueeze(1)).squeeze()))
 
                 #alm function for the in distribution constraint
-                in_constraint_term = loss_energy_in - args.false_alarm_cutoff
-                if in_constraint_weight * in_constraint_term + lam >= 0:
-                    in_loss = in_constraint_term * lam + in_constraint_weight / 2 * torch.pow(in_constraint_term, 2)
+                in_constraint_term = loss_energy_in - self.false_alarm_cutoff
+                if self.in_constraint_weight * in_constraint_term + lam >= 0:
+                    in_loss = in_constraint_term * lam + self.in_constraint_weight / 2 * torch.pow(in_constraint_term, 2)
                 else:
-                    in_loss = - torch.pow(lam, 2) * 0.5 / in_constraint_weight
+                    in_loss = - torch.pow(lam, 2) * 0.5 / self.in_constraint_weight
 
                 #alm function for the cross entropy constraint
-                loss_ce_constraint = loss_ce - args.ce_tol * full_train_loss
-                if ce_constraint_weight * loss_ce_constraint + lam2 >= 0:
-                    loss_ce = loss_ce_constraint * lam2 + ce_constraint_weight / 2 * torch.pow(loss_ce_constraint, 2)
+                loss_ce_constraint = loss_ce - self.ce_tol * full_train_loss
+                if self.ce_constraint_weight * loss_ce_constraint + lam2 >= 0:
+                    loss_ce = loss_ce_constraint * lam2 + self.ce_constraint_weight / 2 * torch.pow(loss_ce_constraint, 2)
                 else:
-                    loss_ce = - torch.pow(lam2, 2) * 0.5 / ce_constraint_weight
+                    loss_ce = - torch.pow(lam2, 2) * 0.5 / self.ce_constraint_weight
+                
+                loss_ce = loss_ce.clone().detach().requires_grad_()
 
-                loss = loss_ce + args.out_constraint_weight*loss_energy_out + in_loss
-
+                loss = loss_ce + in_loss
 
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item() * inputs.size(0)
+
+            print("making updates for energy alm methods...")
+            avg_sigmoid_energy_losses, _, avg_ce_loss = self.evaluate_energy_logistic_loss(dataloader)
+
+            in_term_constraint = avg_sigmoid_energy_losses -  self.false_alarm_cutoff
+            print("in_distribution constraint value {}".format(in_term_constraint))
+
+            # update lambda
+            print("updating lam...")
+            if in_term_constraint * self.in_constraint_weight + lam >= 0:
+                lam += self.lr_lam * in_term_constraint
+            else:
+                lam += -self.lr_lam * lam / self.in_constraint_weight
+
+            print("making updates for energy alm methods...")
+            avg_sigmoid_energy_losses, _, avg_ce_loss = self.evaluate_energy_logistic_loss(dataloader)
+
+            in_term_constraint = avg_sigmoid_energy_losses -  self.false_alarm_cutoff
+            print("in_distribution constraint value {}".format(in_term_constraint))
+
+            print("updating lam2...")
+
+            ce_constraint = avg_ce_loss - self.ce_tol * full_train_loss
+            print("cross entropy constraint {}".format(ce_constraint))
+
+            # update lambda2
+            if ce_constraint * self.ce_constraint_weight + lam2 >= 0:
+                lam2 += self.lr_lam * ce_constraint
+            else:
+                lam2 += -self.lr_lam * lam2 / self.ce_constraint_weight
+
+            
+            self.in_constraint_weight *= self.penalty_mult
+            self.ce_constraint_weight *= self.penalty_mult
+
             epoch_loss = running_loss / len(train_ds)
             logging.info(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}")
         
@@ -148,21 +273,17 @@ class Energy:
         energy_predicted_labels = (test_energy > self.energy_threshold).astype(int)
         ood_true = np.array(dataset.ood_labels)
         
-        if self.task == 'oodd-s':
-            return test_energy, ood_true, energy_predicted_labels, None, None
-        elif self.task == 'oodd-a':
-            id_indices = np.where(energy_predicted_labels == 0)[0]
-            id_true_labels = np.array(dataset.labels)[id_indices]
-            
-            logit_list = torch.cat(logit_list, dim=0).cpu().numpy()
-            id_logits = logit_list[id_indices]
-            
-            id_predicted = np.argmax(id_logits, axis=1)
-            id_predicted_labels = id_predicted
-            
-            return test_energy, ood_true, energy_predicted_labels, id_true_labels, id_predicted_labels
-        else:
-            raise ValueError(f"Unsupported task type")
+
+        id_indices = np.where(energy_predicted_labels == 0)[0]
+        id_true_labels = np.array(dataset.labels)[id_indices]
+        
+        logit_list = torch.cat(logit_list, dim=0).cpu().numpy()
+        id_logits = logit_list[id_indices]
+        
+        id_predicted = np.argmax(id_logits, axis=1)
+        id_predicted_labels = id_predicted
+        
+        return test_energy, ood_true, energy_predicted_labels, id_true_labels, id_predicted_labels
 
 
         
