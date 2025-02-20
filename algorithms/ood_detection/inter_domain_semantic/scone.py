@@ -4,11 +4,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
 class Energy:
-    def __init__(self, task, epochs = 5, batch_size = 64,num_class=2, threshold_percent=90, margin=-25):
+    def __init__(self, task, epochs = 5, batch_size = 64,num_class=2, threshold_percent=90):
         """
         Initialize One-Class SVM for OOD detection.
         :param nu: An upper bound on the fraction of margin errors and a lower bound of support vectors.
@@ -21,7 +20,6 @@ class Energy:
         self.epochs = epochs
         self.batch_size = batch_size
         self.threshold_percent = threshold_percent
-        self.margin = margin
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.resnet50 = models.resnet50(pretrained=True)
@@ -62,12 +60,31 @@ class Energy:
                 inputs, target = inputs.to(self.device), target.to(self.device)
                 optimizer.zero_grad()
                 outputs = self.resnet50(inputs)
-                loss = criterion(outputs, target)
+                loss_ce = criterion(outputs, target)
 
-                Ec_in = -torch.logsumexp(outputs, dim=1)
-                loss_energy = 0.1 * (torch.pow(F.relu(Ec_in - self.margin), 2).mean())
-                loss = loss + loss_energy
-                
+                #apply the sigmoid loss
+                loss_energy_in =  torch.mean(torch.sigmoid(logistic_regression(
+                    (torch.logsumexp(x[:len(in_set[0])], dim=1)).unsqueeze(1)).squeeze()))
+                loss_energy_out = torch.mean(torch.sigmoid(-logistic_regression(
+                    (torch.logsumexp(x[len(in_set[0]):], dim=1) - args.eta).unsqueeze(1)).squeeze()))
+
+                #alm function for the in distribution constraint
+                in_constraint_term = loss_energy_in - args.false_alarm_cutoff
+                if in_constraint_weight * in_constraint_term + lam >= 0:
+                    in_loss = in_constraint_term * lam + in_constraint_weight / 2 * torch.pow(in_constraint_term, 2)
+                else:
+                    in_loss = - torch.pow(lam, 2) * 0.5 / in_constraint_weight
+
+                #alm function for the cross entropy constraint
+                loss_ce_constraint = loss_ce - args.ce_tol * full_train_loss
+                if ce_constraint_weight * loss_ce_constraint + lam2 >= 0:
+                    loss_ce = loss_ce_constraint * lam2 + ce_constraint_weight / 2 * torch.pow(loss_ce_constraint, 2)
+                else:
+                    loss_ce = - torch.pow(lam2, 2) * 0.5 / ce_constraint_weight
+
+                loss = loss_ce + args.out_constraint_weight*loss_energy_out + in_loss
+
+
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item() * inputs.size(0)

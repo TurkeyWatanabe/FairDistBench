@@ -4,15 +4,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
 class MSP:
-    def __init__(self, task, epochs=5, batch_size=64, num_class=2, threshold_percent=90):
+    def __init__(self, task, epochs=5, batch_size=64, num_class=2, threshold_percent=90, margin=-10):
         # Initialize parameters and model
         self.task = task
         self.epochs = epochs
         self.batch_size = batch_size
         self.threshold_percent = threshold_percent
+        self.margin = margin
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.resnet50 = models.resnet50(pretrained=True)
@@ -46,7 +48,13 @@ class MSP:
                 inputs, target = inputs.to(self.device), target.to(self.device)
                 optimizer.zero_grad()
                 outputs = self.resnet50(inputs)
-                loss = criterion(outputs, target)
+                loss_ce = criterion(outputs, target)
+
+                Ec_in = self.compute_msp(outputs)
+                loss_energy = 0.1 * (torch.pow(F.relu(Ec_in - self.margin), 2).mean())
+                loss = loss + loss_energy
+
+
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item() * inputs.size(0)
