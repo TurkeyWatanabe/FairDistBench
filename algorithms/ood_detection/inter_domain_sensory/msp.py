@@ -110,7 +110,7 @@ class MSP:
             id_indices = np.where(msp_predicted_labels == 0)[0]
             id_true_labels = np.array(dataset.labels)[id_indices]
             
-            logit_list = torch.cat(logit_list, dim=0).numpy()
+            logit_list = torch.cat(logit_list, dim=0).cpu().numpy()
             id_logits = logit_list[id_indices]
             
             id_predicted = np.argmax(id_logits, axis=1)

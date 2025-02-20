@@ -53,8 +53,9 @@ class Entropy:
         self.resnet50.train()
         for epoch in range(epochs):
             running_loss = 0.0
-            for inputs, target in id_dataloader:
-                data_ood, _ = next(ood_train_iter)
+            for id_data, ood_data in zip(id_dataloader, ood_train_iter):
+                inputs, target = id_data
+                data_ood, _ = ood_data
                 ood_inputs = data_ood.to(self.device)
                 id_inputs, id_target = inputs.to(self.device), target.to(self.device)
                 
@@ -130,7 +131,7 @@ class Entropy:
             id_indices = np.where(entropy_predicted_labels == 0)[0]
             id_true_labels = np.array(dataset.labels)[id_indices]
             
-            logit_list = torch.cat(logit_list, dim=0).numpy()
+            logit_list = torch.cat(logit_list, dim=0).cpu().numpy()
             id_logits = logit_list[id_indices]
             
             id_predicted = np.argmax(id_logits, axis=1)
