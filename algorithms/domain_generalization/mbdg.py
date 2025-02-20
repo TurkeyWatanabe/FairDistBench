@@ -55,10 +55,6 @@ class MUNITModelOfNatVar(nn.Module):
 
         return x_out[:, :2, :, :]
 
-    # def forward(self, x, delta):
-    #     orig_content, _ = self._gen_A.encode(x)
-    #     orig_content = orig_content.clone().detach().requires_grad_(False)
-    #     return self._gen_B.decode(orig_content, delta)
 
     def __load(self):
         """Load MUNIT model from file."""
@@ -66,7 +62,7 @@ class MUNITModelOfNatVar(nn.Module):
         def load_munit(fname, letter):
             gen = AdaINGen(self._config[f'input_dim_{letter}'], self._config['gen'])
             gen.load_state_dict(torch.load(fname)[letter])
-            return gen.eval() # 不更新
+            return gen.eval()
 
         gen_A = load_munit(self._fname, 'a')
         gen_B = load_munit(self._fname, 'b')
@@ -95,7 +91,9 @@ class MBDG(torch.nn.Module):
         (2021), 20210–20229
     """
 
-    def __init__(self, batch_size, epoch, n_steps, mbdg_gamma=0.025, mbdg_dual_step_size=0.05, num_classes=2,lr=5e-5,weight_decay=0):
+    def __init__(self, batch_size, epoch, n_steps, mbdg_gamma=0.025, 
+                 mbdg_dual_step_size=0.05, num_classes=2,lr=5e-5,weight_decay=0,
+                 model_path='mbdg/model_path', config_path='mbdg/config_path'):
         super().__init__()
 
         self.network = models.resnet50(pretrained=True)
@@ -115,10 +113,11 @@ class MBDG(torch.nn.Module):
         self.n_steps_per_epoch = n_steps
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.network.to(self.device) # (batch_size, channels, height, width) 
-
-        self.G = load_munit_model(
-        self.hparams['mbdg_model_path'],
-        self.hparams['mbdg_config_path'])
+        
+        # Load from pretrained munit model.
+        # For more information about pretraining a munit model on given dataset,
+        # see https://github.com/arobey1/mbdg/tree/main/domainbed/munit.
+        self.G = load_munit_model(model_path, config_path)
 
     def kl_div(dist1, dist2):
         return F.kl_div(torch.log(dist2), dist1, reduction='batchmean')

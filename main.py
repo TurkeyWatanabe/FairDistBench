@@ -25,6 +25,7 @@ from algorithms.ood_detection.inter_domain_sensory.energy import Energy
 from algorithms.ood_detection.inter_domain_sensory.msp import MSP
 from algorithms.ood_detection.inter_domain_sensory.ddu import DDU
 from algorithms.ood_detection.inter_domain_sensory.entropy import Entropy
+from algorithms.ood_detection.inter_domain_semantic.daml import DAML
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -57,7 +58,7 @@ def main():
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
-    parser.add_argument("--n_steps", type=int, default=1000, help="Steps in each epoch")
+    parser.add_argument("--n_steps", type=int, default=1, help="Steps in each epoch")
     
     args, unknown = parser.parse_known_args()
     
@@ -76,7 +77,7 @@ def main():
     elif args.task == "oodd-e":
         parser.add_argument("--domain", type=str, required=True, help="Attribute for domain division")
         parser.add_argument("--sensitive", type=str, default='', help="No need for oodg task")
-        parser.add_argument("--model", type=str, required=True, choices=["svm", "ddu","msp","energy","entropy"])
+        parser.add_argument("--model", type=str, required=True, choices=["edst", "scone","daml","medic","maood"])
     
 
     args = parser.parse_args()
@@ -209,7 +210,7 @@ def main():
             auroc.append(metrics.auroc())
             aupr.append(metrics.aupr())
 
-        results = [['AUROC',sum(auroc) / len(auroc)], ['AUPR',sum(aupr) / len(aupr)], ['ID/OOD Accuracy',sum(aupr) / len(aupr)]]
+        results = [['AUROC',sum(auroc) / len(auroc)], ['AUPR',sum(aupr) / len(aupr)], ['ID/OOD Accuracy',sum(ood_id_accs) / len(ood_id_accs)]]
 
     elif args.task =='oodd-a':
         args.sensitive = ''
@@ -241,19 +242,29 @@ def main():
         args.sensitive = ''
         # data loader
         dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
-        accs = []
-        f1s = []
+        id_accs = []
+        auroc = []
+        aupr = []
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
-            print(dataset.train_dataset[i].domain)
-            print(dataset.train_dataset[i].labels)
+            if args.model == 'maood':
+                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            elif args.model == 'daml':
+                model = DAML(num_domains=dataset.num_domains-1,epochs=args.epoch, n_steps=args.n_steps, batch_size=args.batch_size)
+            else:
+                raise ValueError(f"Unsupported model type for {args.task} task")
+            
+            model.fit(dataset.train_dataset[i])
 
-            print(dataset.test_dataset[i].domain)
-            print(dataset.test_dataset[i].labels)
-            print(dataset.test_dataset[i].ood_labels)
-            print()
+            preds, ood_labels, predicted_labels, id_class_labels, id_class_predicted_labels = model.predict(dataset.test_dataset[i])
 
-        exit(0)
+            metrics = OODDetectionMetrics(ood_labels, preds, predicted_labels, id_class_labels, id_class_predicted_labels)
+            
+            id_accs.append(metrics.id_accuracy())
+            auroc.append(metrics.auroc())
+            aupr.append(metrics.aupr())
+        
+        results = [['AUROC',sum(auroc) / len(auroc)], ['AUPR',sum(aupr) / len(aupr)], ['ID Accuracy',sum(id_accs) / len(id_accs)]]
 
     
     logging.info("Final Evaluation Results:")

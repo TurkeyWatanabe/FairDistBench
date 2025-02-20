@@ -7,7 +7,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 class Dataset:
-    def __init__(self, data, labels, sensitive_attribute, domain, ood_labels=[]):
+    def __init__(self, data, labels, sensitive_attribute, domain, ood_labels=[], domain_labels=np.array([])):
         self.data = data  # The main data (e.g., features of the dataset)
         self.shape = data[0].shape
         self.labels = labels  # The labels (e.g., target values for classification)
@@ -20,6 +20,8 @@ class Dataset:
         self.ood_labels = ood_labels
         self.domain_indices = []
         self.num_domains = 0
+        self.domain_to_index = {}
+        self.domain_labels = domain_labels
 
     def __len__(self):
         return len(self.labels)
@@ -33,6 +35,9 @@ class Dataset:
 
         if len(self.domain) != 0:
             unique_domains = np.sort(np.unique(self.domain))
+            self.domain_to_index = {label: idx for idx, label in enumerate(unique_domains)}
+            self.domain_labels = np.array([self.domain_to_index[d] for d in self.domain])
+
             self.domain_indices = [np.where(self.domain == domain)[0].tolist() for domain in unique_domains]
         else:
             self.domain_indices = [np.arange(len(self)).tolist()]
@@ -92,14 +97,16 @@ class Dataset:
                     data=self.data[train_indices],
                     labels=self.labels[train_indices],
                     sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
-                    domain=self.domain[train_indices] if len(self.domain) != 0 else []
+                    domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                    domain_labels=self.domain_labels[train_indices] if len(self.domain) != 0 else []
                 )
 
                 test_dataset = Dataset(
                     data=self.data[test_indices],
                     labels=self.labels[test_indices],
                     sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
-                    domain=self.domain[test_indices] if len(self.domain) != 0 else []
+                    domain=self.domain[test_indices] if len(self.domain) != 0 else [],
+                    domain_labels=self.domain_labels[test_indices] if len(self.domain) != 0 else []
                 )
 
                 self.train_dataset.append(train_dataset)
@@ -133,6 +140,7 @@ class Dataset:
                     labels=self.labels[train_indices],
                     sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
                     domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                    domain_labels=self.domain_labels[train_indices] if len(self.domain) != 0 else []
                 )
 
                 test_dataset = Dataset(
@@ -140,7 +148,8 @@ class Dataset:
                     labels=self.labels[test_indices],
                     sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
                     domain=self.domain[test_indices] if len(self.domain) != 0 else [],
-                    ood_labels=ood_labels[test_indices]
+                    ood_labels=ood_labels[test_indices],
+                    domain_labels=self.domain_labels[test_indices] if len(self.domain) != 0 else []
                 )
 
                 self.train_dataset.append(train_dataset)
@@ -169,6 +178,7 @@ class Dataset:
                 labels=self.labels[train_indices],
                 sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
                 domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                domain_labels=self.domain_labels[train_indices] if len(self.domain) != 0 else []
             )
 
             test_dataset = Dataset(
@@ -176,7 +186,8 @@ class Dataset:
                 labels=self.labels[test_indices],
                 sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
                 domain=self.domain[test_indices] if len(self.domain) != 0 else [],
-                ood_labels=ood_labels[test_indices]
+                ood_labels=ood_labels[test_indices],
+                domain_labels=self.domain_labels[test_indices] if len(self.domain) != 0 else []
             )
 
             self.train_dataset.append(train_dataset)
@@ -211,6 +222,7 @@ class Dataset:
                     labels=self.labels[train_indices],
                     sensitive_attribute=self.sensitive_attribute[train_indices] if len(self.sensitive_attribute) != 0 else [],
                     domain=self.domain[train_indices] if len(self.domain) != 0 else [],
+                    domain_labels=self.domain_labels[train_indices] if len(self.domain) != 0 else []
                 )
 
                 test_dataset = Dataset(
@@ -218,7 +230,8 @@ class Dataset:
                     labels=self.labels[test_indices],
                     sensitive_attribute=self.sensitive_attribute[test_indices]if len(self.sensitive_attribute) != 0 else [],
                     domain=self.domain[test_indices] if len(self.domain) != 0 else [],
-                    ood_labels=ood_labels[test_indices]
+                    ood_labels=ood_labels[test_indices],
+                    domain_labels=self.domain_labels[test_indices] if len(self.domain) != 0 else []
                 )
 
                 self.train_dataset.append(train_dataset)
