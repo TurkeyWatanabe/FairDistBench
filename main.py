@@ -26,6 +26,7 @@ from algorithms.ood_detection.inter_domain_sensory.msp import MSP
 from algorithms.ood_detection.inter_domain_sensory.ddu import DDU
 from algorithms.ood_detection.inter_domain_sensory.entropy import Entropy
 from algorithms.ood_detection.inter_domain_semantic.daml import DAML
+from algorithms.ood_detection.inter_domain_semantic.edst import Ensemble_MMD_with_Distill
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -247,10 +248,12 @@ def main():
         aupr = []
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
-            if args.model == 'maood':
-                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            if args.model == 'edst':
+                model = Ensemble_MMD_with_Distill(num_domains=dataset.num_domains-1,epochs=args.epoch, n_steps=args.n_steps, batch_size=args.batch_size)
             elif args.model == 'daml':
                 model = DAML(num_domains=dataset.num_domains-1,epochs=args.epoch, n_steps=args.n_steps, batch_size=args.batch_size)
+            elif args.model == 'maood':
+                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
