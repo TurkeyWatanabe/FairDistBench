@@ -35,7 +35,6 @@ class OODDetectionMetrics:
     
     
     def auroc(self):
-
         return roc_auc_score(self.ood_labels, self.ood_preds)
     
     def aupr(self):

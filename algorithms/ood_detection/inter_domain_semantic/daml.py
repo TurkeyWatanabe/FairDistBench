@@ -6,7 +6,7 @@ import torchvision.models as models
 import numpy as np
 
 import logging
-from torch.utils.data import Dataset, DataLoader, RandomSampler
+from torch.utils.data import Dataset, DataLoader, RandomSampler, TensorDataset
 
 
 class CustomDataset(Dataset):
@@ -326,29 +326,69 @@ class DAML(torch.nn.Module):
 
             logging.info(f"Epoch [{epoch+1}/{self.epoch}], Loss: {total_loss:.4f}")
 
-
-    def predict(self, dataset):
-        x = torch.tensor(dataset.data).permute(0, 3, 1, 2).float()
-        ood_true = np.array(dataset.ood_labels)
-
+    def get_logits(self, data):
         logits = []
         for i in range(self.num_domains):
-            z = self.featurizers[i](x).squeeze(-1).squeeze(-1)
-            logits.append(self.classifiers[i](z))
+            with torch.no_grad():
+                inputs = data.to(self.device)
+                z = self.featurizers[i](inputs).squeeze(-1).squeeze(-1)
+                logits.append(self.classifiers[i](z))
 
         mean_logits = torch.mean(torch.stack(logits), dim=0)
-        
-        id_logit = torch.logsumexp(mean_logits[:, :2], dim=1)
-        ood_logit = mean_logits[:, 2]
-        
-        ood_score = torch.stack([id_logit, ood_logit], dim=1)
 
-        ood_predicted_labels = torch.argmax(ood_score, dim=1)
+        return mean_logits
+    
+    def predict(self, dataset):
+        ood_true = np.array(dataset.ood_labels)
+
+        max_logits = []
+        y_binaries = []
+        logits_list = []
+        data = CustomDataset(dataset.data, dataset.labels,dataset.domain_labels)
+        dataloader = DataLoader(data, batch_size=256, shuffle=False)
+        with torch.no_grad():
+            for x,y,_ in dataloader:
+                x = torch.tensor(x).permute(0, 3, 1, 2).float()
+                # x = data[0].cuda().float()  # torch.Size([64, 3, 224, 224])
+                # y = data[1].cuda().long()  # torch.Size([64])
+                y_binary = [True if (c.item() in range(2)) else False for c in y]
+                y_binaries.extend(y_binary)
+                p = self.get_logits(x)  # p means logits. torch.Size([64, 65])
+                logits_list.append(p)
+                max_logit: torch.tensor = p.max(dim=1).values
+                max_logits.extend(max_logit.tolist())
+
+        # logits = []
+        # for i in range(self.num_domains):
+        #     logit_list = []
+        #     bs = 256
+        #     data = torch.tensor(dataset.data).permute(0, 3, 1, 2).float()
+        #     data = TensorDataset(data)
+        #     dataloader = DataLoader(data, batch_size=bs, shuffle=False)
+        #     self.featurizers.eval()
+        #     self.classifiers.eval()
+        #     with torch.no_grad():
+        #         for batch in dataloader:
+        #             inputs = batch[0].to(self.device)
+
+        #             z = self.featurizers[i](inputs).squeeze(-1).squeeze(-1)
+        #             logit_list.append(self.classifiers[i](z))
+        #     logits.append(torch.stack(logit_list).squeeze(0))
+
+        # mean_logits = torch.mean(torch.stack(logits), dim=0)
+
+        
+        # id_logit = torch.logsumexp(mean_logits[:, :2], dim=1)
+        # ood_logit = mean_logits[:, 2]
+        mean_logits = torch.mean(torch.stack(logits_list), dim=0)
+        ood_score = max_logits
+
         
         id_logits = mean_logits[:, :2]
         id_predicted_all = torch.argmax(id_logits, dim=1)
-        id_indices = np.where(ood_predicted_labels == 0)[0]
+        id_indices = np.where(ood_true == 0)[0]
         id_predicted_labels = id_predicted_all[id_indices]
         id_true_labels = np.array(dataset.labels)[id_indices]
+
         
-        return ood_score, ood_true, ood_predicted_labels, id_predicted_labels, id_true_labels
+        return ood_score, ood_true, None, id_predicted_labels, id_true_labels
