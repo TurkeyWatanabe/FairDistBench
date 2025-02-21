@@ -66,7 +66,8 @@ class MEDIC:
                 #     scd = CustomDataset(images, dataset.labels)
                 # else:
                 #     scd = CustomDataset(domain_data, domain_labels)
-                scd = CustomDataset(images, dataset.labels)
+                # scd = CustomDataset(images, dataset.labels)
+                scd = CustomDataset(domain_data, domain_labels)
                 loader = DataLoader(dataset=scd, batch_size=self.batch_size//2, shuffle=True, drop_last=True, num_workers=1)
                 dataloader_list.append(loader)
 
@@ -187,7 +188,7 @@ class MEDIC:
                 weight.fast = None
             self.net.zero_grad()
         
-        energies = torch.cat(energies, dim=0).detach().numpy()
+        energies = torch.cat(energies, dim=0).detach().cpu().numpy()
         self.energy_threshold = np.percentile(energies, self.threshold_percent)
     
     def predict(self, dataset):
@@ -210,7 +211,7 @@ class MEDIC:
                 logit_list.append(logits.cpu())
                 energy = self.compute_energy(logits)
                 energy_list.append(energy.cpu())
-        test_energy = torch.cat(energy_list, dim=0).detach().numpy()
+        test_energy = torch.cat(energy_list, dim=0).detach().cpu().numpy()
         
         energy_predicted_labels = (test_energy > self.energy_threshold).astype(int)
         ood_true = np.array(dataset.ood_labels)

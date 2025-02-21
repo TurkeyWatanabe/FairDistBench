@@ -183,7 +183,7 @@ class Ensemble_MMD_with_Distill(torch.nn.Module):
             domains = [0] * y_s_distill.shape[1]
             domains = torch.LongTensor(domains)
 
-            mixup_ratios = get_ratio_mixup_Dirichlet(domains, [1.0, 1.0])
+            mixup_ratios = get_ratio_mixup_Dirichlet(domains, [1.0]*(nmb-1))
             mixup_ratios = mixup_ratios.to(self.device)  # N * 2
             mixup_ratios = mixup_ratios.permute(1, 0).unsqueeze(-1)  # 2 * N * 1
             y_s_distill = torch.sum(y_s_distill * mixup_ratios , dim=0)

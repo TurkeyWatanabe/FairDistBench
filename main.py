@@ -158,17 +158,17 @@ def main():
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
             if args.model == 'erm':
-                model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             elif args.model == 'irm':
-                model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             elif args.model == 'gdro':
-                model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             elif args.model == 'mixup':
-                model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             elif args.model == 'mmd':
-                model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             elif args.model == 'mbdg':
-                model = MBDG(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
+                model = MBDG(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_classes=args.num_classes)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
@@ -179,7 +179,10 @@ def main():
             metrics = DomainGeneralizationMetric(labels, preds)
             
             accs.append(metrics.accuracy())
-            f1s.append(metrics.f1())
+            if args.num_classes == 2:
+                f1s.append(metrics.f1('binary'))
+            else:
+                f1s.append(metrics.f1('weighted'))
         
         
         results = [['Accuracy',sum(accs) / len(accs)], ['F1-Score',sum(f1s) / len(f1s)]]
