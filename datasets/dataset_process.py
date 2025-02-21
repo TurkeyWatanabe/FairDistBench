@@ -280,6 +280,9 @@ def load_data(dataset, task, path, label, sensitive, domain):
         elif label == 'gender':
             gender = get_gender(dataset, item)
             labels.append(gender)
+        elif label == 'race':
+            race = get_race(task, dataset, item)
+            labels.append(race)
         elif label != '':
             try:
                 labels.append(item[label])
@@ -293,6 +296,9 @@ def load_data(dataset, task, path, label, sensitive, domain):
         elif sensitive == 'gender':
             gender = get_gender(dataset, item)
             sensitive_attributes.append(gender)
+        elif sensitive == 'race':
+            race = get_race(task, dataset, item)
+            sensitive_attributes.append(race)
         elif sensitive != '':
             try:
                 sensitive_attributes.append(item[sensitive]) 
@@ -498,3 +504,136 @@ def get_age(task, dataset, item):
                 return 1
             else:
                 raise ValueError(f"Unknown age group: {age} for id {item['id']}")
+            
+def get_race(task, dataset, item):
+    '''
+    Specific race process for different tasks and different datasets.
+
+    '''
+
+    if task[0:4]=='fair':
+        if dataset == 'f4d':
+            try:
+                Asian = item['Asian']
+            except KeyError:
+                raise KeyError(f"Missing 'Asian' key for id {item['id']}")
+            try:
+                Black = item['Black']
+            except KeyError:
+                raise KeyError(f"Missing 'Black' key for id {item['id']}")
+            try:
+                Others = item['Others']
+            except KeyError:
+                raise KeyError(f"Missing 'Others' key for id {item['id']}")
+
+            if Asian == 1 or Others == 1:
+                return 0
+            elif Black == 1:
+                return 1
+            else:
+                # If no valid race category is found, raise an exception
+                raise ValueError(f"Invalid race category data: {item}")
+        elif dataset == 'celeba':
+            pass
+
+
+        elif dataset == 'fairface':
+            try:
+                race = item['race']
+            except KeyError:
+                raise KeyError(f"Missing 'race' key for id {item['id']}")
+
+            if race == "Black":  # If race is "Black", return 1
+                return 1
+            else:  # Otherwise, return 0
+                return 0
+
+        elif dataset == 'utkface':
+            try:
+                race = int(item['race'])
+            except (KeyError, ValueError) as e:
+                raise ValueError(f"Invalid or missing 'race' value for id {item['id']}: {e}")
+            if race == 1:
+                return 0
+            elif race in (0,2, 3, 4):
+                return 1
+            else:
+                raise ValueError(f"Invalid race category data: {item}")
+        elif dataset =='utk-fairface':
+            try:
+                race = item['race']
+            except KeyError:
+                raise KeyError(f"Missing 'race' key for id {item['id']}")
+            if race in ["Asian","Indian", "White", "Others"]:  # Category 0
+                return 1
+            elif race in ["Black"]:  # Category 1
+                return 0
+            else:
+                raise ValueError(f"Invalid race category data: {item}")
+    else:
+        if dataset == 'f4d':
+            try:
+                Asian = item['Asian']
+            except KeyError:
+                raise KeyError(f"Missing 'Asian' key for id {item['id']}")
+            try:
+                Black = item['Black']
+            except KeyError:
+                raise KeyError(f"Missing 'Black' key for id {item['id']}")
+            try:
+                Others = item['Others']
+            except KeyError:
+                raise KeyError(f"Missing 'Others' key for id {item['id']}")
+
+            if Asian == 1:
+                return 0
+            elif Black == 1:
+                return 1
+            elif Others == 1:
+                return 2
+            else:
+                # If no valid race category is found, raise an exception
+                raise ValueError(f"Invalid race category data: {item}")
+
+        elif dataset == 'celeba':
+            pass
+        elif dataset == 'fairface':
+            try:
+                race = item['race']
+            except KeyError:
+                raise KeyError(f"Missing 'race' key for id {item['id']}")
+            if race in ["East Asian", "Southeast Asian"]:  # Category 0
+                return 0
+            elif race in ["Black"]:  # Category 1
+                return 1
+            elif race in ["Indian", "White","Latino_Hispanic","Middle Eastern"]:  # Category 2
+                return 2
+            else:
+                raise ValueError(f"Unknown race group: {race} for id {item['id']}")
+        elif dataset == 'utkface':
+            try:
+                race = int(item['race'])
+            except (KeyError, ValueError) as e:
+                raise ValueError(f"Invalid or missing 'race' value for id {item['id']}: {e}")
+            if race == 2:
+                return 0
+            elif race == 1:
+                return 1
+            elif race in (0, 3, 4):
+                return 2
+            else:
+                raise ValueError(f"Invalid race category data: {item}")
+        elif dataset =='utk-fairface':
+            try:
+                race = item['race']
+            except KeyError:
+                raise KeyError(f"Missing 'race' key for id {item['id']}")
+            if race in ["Asian"]:  # Category 0
+                return 0
+            elif race in ["Black"]:  # Category 1
+                return 1
+            elif race in ["Indian", "White", "Others"]:  # Category 2
+                return 2
+            else:
+                raise ValueError(f"Invalid race category data: {item}")
+        

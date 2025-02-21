@@ -63,6 +63,8 @@ def main():
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
     parser.add_argument("--n_steps", type=int, default=1, help="Steps in each epoch")
+    parser.add_argument("--num_classes", type=int, default=2, help="Steps in each epoch")
+
     
     args, unknown = parser.parse_known_args()
     
@@ -156,17 +158,17 @@ def main():
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
             if args.model == 'erm':
-                model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = ERM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             elif args.model == 'irm':
-                model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = IRM(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             elif args.model == 'gdro':
-                model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = GroupDRO(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             elif args.model == 'mixup':
-                model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = Mixup(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             elif args.model == 'mmd':
-                model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = MMD(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             elif args.model == 'mbdg':
-                model = MBDG(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps)
+                model = MBDG(batch_size=args.batch_size, epoch=args.epoch, n_steps=args.n_steps, num_class=args.num_classes)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
@@ -192,15 +194,15 @@ def main():
         for i in range(dataset.num_domains):
             logging.info(f"Leave domian {i} for testing...")
             if args.model == 'oc-svm':
-                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
             elif args.model == 'energy':
-                model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
             elif args.model == 'msp':
-                model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
             elif args.model == 'ddu':
-                model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
             elif args.model == 'entropy':
-                model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
@@ -222,15 +224,15 @@ def main():
         dataset = prepare_dataset(args.dataset, args.task, label = args.label, sensitive = args.sensitive, domain=args.domain)
         
         if args.model == 'oc-svm':
-            model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
         elif args.model == 'energy':
-            model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            model = Energy(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
         elif args.model == 'msp':
-            model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            model = MSP(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
         elif args.model == 'ddu':
-            model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            model = DDU(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
         elif args.model == 'entropy':
-            model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size)
+            model = Entropy(args.task, epochs=args.epoch, batch_size=args.batch_size, num_class=args.num_classes)
         else:
             raise ValueError(f"Unsupported model type for {args.task} task")
         
