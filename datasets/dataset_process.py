@@ -353,14 +353,6 @@ def get_gender(dataset, item):
             raise KeyError(f"Missing 'age' key for id {item['id']}")
 
         return gender - 1
-    elif dataset == 'celeba':
-        try:
-            male = item['Male']
-        except KeyError:
-            raise KeyError(f"Missing 'age' key for id {item['id']}")
-        
-        if male == 1: return 0
-        elif male == -1: return 1
     elif dataset == 'fairface':
         try:
             gender = item['gender']
@@ -409,8 +401,6 @@ def get_age(task, dataset, item):
                 # If no valid age category is found, raise an exception
                 raise ValueError(f"Invalid age category data: {item}")
 
-        elif dataset == 'celeba':
-            pass
         elif dataset == 'fairface':
             try:
                 age = item['age']
@@ -473,16 +463,6 @@ def get_age(task, dataset, item):
             else:
                 # If no valid age category found, raise an exception
                 raise ValueError(f"Invalid age category data: {item}")
-        elif dataset == 'celeba':
-            try:
-                young = item['Young']
-            except KeyError:
-                raise KeyError(f"Missing 'Young' key for id {item['id']}")
-
-            if young == 1:
-                return 0
-            else:
-                return 1
 
         elif dataset == 'fairface':
             try:

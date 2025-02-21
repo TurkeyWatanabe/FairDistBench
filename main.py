@@ -28,6 +28,8 @@ from algorithms.ood_detection.inter_domain_sensory.entropy import Entropy
 from algorithms.ood_detection.inter_domain_semantic.daml import DAML
 from algorithms.ood_detection.inter_domain_semantic.edst import Ensemble_MMD_with_Distill
 from algorithms.ood_detection.inter_domain_semantic.scone import SCONE
+from algorithms.ood_detection.inter_domain_semantic.medic import MEDIC
+from algorithms.ood_detection.inter_domain_semantic.maood import MAOOD
 
 from metrics.binary_fairness_metrics import BinaryLabelFairnessMetric
 from metrics.domain_generalization_metrics import DomainGeneralizationMetric
@@ -56,7 +58,7 @@ logging.basicConfig(
 def main():
     parser = argparse.ArgumentParser(description="Benchmark Evaluation")
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "oodd-s", "oodd-a", "oodd-e", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection, oodd-s(sensory), oodd-a(intra-domain semantic), oodd-e(inter-domain semantic)), fairdg (fariness-aware domain generalization)")
-    parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "celeba", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
+    parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
@@ -255,8 +257,10 @@ def main():
                 model = DAML(num_domains=dataset.num_domains-1,epochs=args.epoch, n_steps=args.n_steps, batch_size=args.batch_size)
             elif args.model == 'scone':
                 model = SCONE(epochs=args.epoch, batch_size=args.batch_size)
+            elif args.model == 'medic':
+                model = MEDIC(batch_size=args.batch_size)
             elif args.model == 'maood':
-                model = OCSVM(args.task, epochs=args.epoch, batch_size=args.batch_size)
+                model = MAOOD(args.task, epochs=args.epoch, batch_size=args.batch_size)
             else:
                 raise ValueError(f"Unsupported model type for {args.task} task")
             
