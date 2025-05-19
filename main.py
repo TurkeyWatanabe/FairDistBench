@@ -58,7 +58,7 @@ logging.basicConfig(
 def main():
     parser = argparse.ArgumentParser(description="Benchmark Evaluation")
     parser.add_argument("--task", type=str, required=True, choices=["fair", "oodg", "oodd-s", "oodd-a", "oodd-e", "fairdg"], help="Type of task, fair(fairness learning), oodg (OOD generalization), oodd (OOD detection, oodd-s(sensory), oodd-a(intra-domain semantic), oodd-e(inter-domain semantic)), fairdg (fariness-aware domain generalization)")
-    parser.add_argument("--dataset", type=str, required=True, choices=["f4d", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
+    parser.add_argument("--dataset", type=str, required=True, choices=["face4fairshifts", "fairface", "utkface", "utk-fairface"], help="Path to the dataset CSV file")
     parser.add_argument("--label", type=str, required=True, help="Name of the label column")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epoch", type=int, default=1, help="Epoch for training")
