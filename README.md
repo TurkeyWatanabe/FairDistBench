@@ -10,7 +10,7 @@ Set up the Python environment using requirements.txt
 `pip install -r requirements.txt`
 
 
-## 2. Download the Dataset and Process
+## 2. Download and Process the Dataset
 
 Download the dataset and place it in the appropriate folder. According to the options in the script arguments, the directory should be structured as follows (using our dataset as an example):
 
