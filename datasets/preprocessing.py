@@ -19,10 +19,8 @@ def excel_to_json(excel_file_path, json_file_path):
     Output: Labeled JSON file
     """
 
-    # 读取 Excel 文件
     df = pd.read_excel(excel_file_path)
 
-    # 将 DataFrame 转换为 JSON 格式，并确保输出是数组形式
     df.to_json(json_file_path, orient='records', indent=4)
 
     print(f"JSON file has been saved to: {json_file_path}")
