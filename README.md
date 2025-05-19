@@ -7,8 +7,8 @@ This repository provides code for evaluating fairness-aware and robust facial at
 
 Set up the Python environment using requirements.txt
 
-```bash
-pip install -r requirements.txt
+`pip install -r requirements.txt`
+
 
 ## 2. Download the Dataset
 
