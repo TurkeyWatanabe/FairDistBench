@@ -352,7 +352,7 @@ def get_gender(dataset, item):
     return: 0: Male; 1: Female
 
     '''
-    if dataset == 'f4d':
+    if dataset == 'face4fairshifts':
         try:
             gender = item['gender']
         except KeyError:
@@ -383,7 +383,7 @@ def get_age(task, dataset, item):
     '''
 
     if task[0:4]=='oodd':
-        if dataset == 'f4d':
+        if dataset == 'face4fairshifts':
             try:
                 teenager = item['teenager']
             except KeyError:
@@ -449,7 +449,7 @@ def get_age(task, dataset, item):
                 raise ValueError(f"Unknown age group: {age} for id {item['id']}")
 
     else:
-        if dataset == 'f4d':
+        if dataset == 'face4fairshifts':
             try:
                 teenager = item['teenager']
             except KeyError:
@@ -512,7 +512,7 @@ def get_race(task, dataset, item):
     '''
 
     if task[0:4]=='fair':
-        if dataset == 'f4d':
+        if dataset == 'face4fairshifts':
             try:
                 Asian = item['Asian']
             except KeyError:
@@ -571,7 +571,7 @@ def get_race(task, dataset, item):
             else:
                 raise ValueError(f"Invalid race category data: {item}")
     else:
-        if dataset == 'f4d':
+        if dataset == 'face4fairshifts':
             try:
                 Asian = item['Asian']
             except KeyError:
