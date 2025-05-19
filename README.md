@@ -29,8 +29,11 @@ Set the `excel_file_path` and `json_file_path` variables in `preprocessing.py`, 
 
 
 ## 3. Run the Code
-Set the parameters and run python main.py, for example:
-`python3 main.py --dataset=face4fairshifts --model=energy --label=age --task=oodd-a --domain=style --epoch=20`
+Set the parameters and run python `main.py`, for example:
+
+```
+python3 main.py --dataset=face4fairshifts --model=energy --label=age --task=oodd-a --domain=style --epoch=20
+```
 
 Detailed parameter specifications can be found in `main.py`
 
