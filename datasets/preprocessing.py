@@ -453,49 +453,11 @@ def add_number_to_filenames(val_folder_path, number_to_add):
                 raise ValueError(f"File '{filename}' cannot be converted to a valid integer, cannot rename.")
 
 def main():
-    # Need further adjustment...
-    '''
-    #resize_images()
-    source_folder = '/home/lym/FairDistBench/datasets/CelebA/raw/img_align_celeba'
-    output_folder = '/home/lym/FairDistBench/datasets/CelebA/resized'
-    print("开始处理CelebA图片...")
-    resize_images(source_folder, output_folder)
 
-    # rename_images_from_excel()
-    excel_file_path = '/home/lym/FairDistBench/datasets/F4D/anno/Annotation.xlsx'
-    images_folder_base = '/home/lym/MBDG/FairPACS'
-    target_folder = '/home/lym/FairDistBench/datasets/F4D/raw'
-    log_file_path = '/home/lym/FairDistBench/datasets/F4D/anno/not_found.txt'
-    rename_images_from_excel(excel_file_path, images_folder_base, target_folder, log_file_path)
-    '''
     #excel_to_json()
-    excel_file_path = '/home/lym/FairDistBench/datasets/utk-fairface/anno/utk-fairface.xlsx'
-    json_file_path = '/home/lym/FairDistBench/datasets/utk-fairface/anno/utk-fairface..json'
+    excel_file_path = 'fill address here'
+    json_file_path = 'fill address here'
     excel_to_json(excel_file_path, json_file_path)
-    '''
-
-    #txt_to_excel()
-    txt_file_path = '/home/lym/FairDistBench/datasets/CelebA/anno/list_attr_celeba.txt'
-    excel_file_path = '/home/lym/FairDistBench/datasets/CelebA/anno/celeba.xlsx'
-    txt_to_excel(txt_file_path, excel_file_path)
     
-    #rename_and_pad_zeroes_in_folder()
-    rename_and_pad_zeroes_in_folder('/home/lym/FairDistBench/datasets/fairface/resized')
-
-    #utkface_rename_images_from_excel()
-    excel_file_path = "/home/lym/FairDistBench/datasets/utkface/anno/utk.xlsx"  # Path to the Excel file
-    images_folder = "/home/lym/FairDistBench/datasets/utkface/resized"  # Path to the folder containing original images
-    target_folder = "/home/lym/FairDistBench/datasets/utkface/resized1"  # Path to the target folder for renamed images
-    log_file_path = "/home/lym/FairDistBench/datasets/utkface/anno/log.txt"  # Path to the log file
-
-    utkface_rename_images_from_excel(excel_file_path, images_folder, target_folder, log_file_path)
-    
-    # utkfair_rename_images_from_excel()
-    excel_file_path = "/home/lym/FairDistBench/datasets/utk-fairface/anno/utk-fairface.xlsx"
-    target_folder = "/home/lym/FairDistBench/datasets/utk-fairface/raw"  # The folder where renamed images will be saved
-    log_file_path = "/home/lym/FairDistBench/datasets/utk-fairface/anno/missing_images.log"  # Path for the log file
-
-    utkfair_rename_images_from_excel(excel_file_path, target_folder, log_file_path)
-    '''
 if __name__ == '__main__':
     main()
