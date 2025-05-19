@@ -25,7 +25,7 @@ datasets/
 
 Make sure the directory structure matches exactly, as the code depends on this organization.
 
-Set the `excel_file_path` and `json_file_path` variables in `preprocessing.py`, then run the script to generate `face4fairshifts.json` and place it in the anno folder.
+Set the `excel_file_path` and `json_file_path` variables in `preprocessing.py`, then run the script using `python3 datasets/preprocessing.py` to generate `face4fairshifts.json` and place it in the anno folder.
 
 
 ## 3. Run the Code
